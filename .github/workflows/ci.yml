@@ -2,10 +2,10 @@ name: CI
 
 on:
   # 暂时禁用CI，取消注释以下行来启用
-   push:
-    branches: [ master, develop ]
-   pull_request:
-    branches: [ master, develop ]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
   
   # 手动触发
   workflow_dispatch:
