@@ -302,19 +302,23 @@ Wechat-Backup/<微信公众号名称>/
 
 ## 💝 赞助与支持
 
-<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin: 18px 0;">
-  <div style="text-align: center;">
-    <img src=".github/assets/sponsor-qr-code/WeChat%20Sponsor%20Code.jpg" alt="WeChat Sponsor Code" width="220" />
-    <div style="margin-top: 8px; color: #666;">个人 微信赞助</div>
-  </div>
-  <div style="text-align: center;">
-    <img src=".github/assets/sponsor-qr-code/SG%20PayNow%20Sponsor%20Code.jpg" alt="SG PayNow Sponsor Code" width="220" />
-    <div style="margin-top: 8px; color: #666;">个人 新加坡 PayNow</div>
-  </div>
-  <div style="text-align: center;">
-    <img src=".github/assets/sponsor-qr-code/Start-up%20Company%20Code.PNG" alt="Start-up Company Sponsor Code" width="220" />
-    <div style="margin-top: 8px; color: #666;">我创业的公司 赞助码</div>
-  </div>
+<div align="center" style="margin: 18px 0;">
+  <table align="center" style="border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 8px 16px;">
+        <img src=".github/assets/sponsor-qr-code/WeChat%20Sponsor%20Code.jpg" alt="WeChat Sponsor Code" width="220" />
+        <div style="margin-top: 8px; color: #666;">个人 微信赞助</div>
+      </td>
+      <td align="center" style="padding: 8px 16px;">
+        <img src=".github/assets/sponsor-qr-code/SG%20PayNow%20Sponsor%20Code.jpg" alt="SG PayNow Sponsor Code" width="220" />
+        <div style="margin-top: 8px; color: #666;">个人 新加坡 PayNow</div>
+      </td>
+      <td align="center" style="padding: 8px 16px;">
+        <img src=".github/assets/sponsor-qr-code/Start-up%20Company%20Code.PNG" alt="Start-up Company Sponsor Code" width="220" />
+        <div style="margin-top: 8px; color: #666;">我创业的公司 赞助码</div>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ## 🔧 故障排除（更多见文档）
