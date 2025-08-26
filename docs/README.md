@@ -6,11 +6,12 @@
 
 ### 🔧 使用指南
 - **[故障排除指南](TROUBLESHOOTING.md)** - 常见问题解决方案和调试技巧
+- **[项目未来展望](FUTURE_VISION.md)** - 个人AI模型训练、语料分析等长期发展规划
 
 ### 📋 项目文档
 - **[README.md](../README.md)** - 项目主要说明文档
 - **[CHANGELOG.md](../CHANGELOG.md)** - 版本更新日志
-- **[STATUS.md](../STATUS.md)** - 项目状态和路线图
+- **[STATUS.md](../STATUS.md)** - 项目状态、路线图和项目展望
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - 贡献指南
 - **[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)** - 行为准则
 - **[SECURITY.md](../SECURITY.md)** - 安全政策
