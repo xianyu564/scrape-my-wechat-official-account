@@ -1,7 +1,7 @@
 # script/wx_publish_backup.py
 
 # wx_publish_backup.py  (year-only folders; HTML named as YYYY-MM-DD_<title>.html)
-import os, re, json, time, pathlib, hashlib, html
+import os, re, json, time, pathlib, hashlib, html, random
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -26,17 +26,18 @@ WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
 COUNT_PER_PAGE = int(config.get("COUNT", "20"))   # 建议 20（接口上限）
-SLEEP_LIST = float(config.get("SLEEP_LIST", "0.6"))
-SLEEP_ART  = float(config.get("SLEEP_ART", "0.3"))
+SLEEP_LIST = float(config.get("SLEEP_LIST", "50"))  # 列表页间隔(秒) 1.5 起
+SLEEP_ART  = float(config.get("SLEEP_ART",  "25"))  # 单篇抓取间隔(秒) 1.0 起
+IMG_SLEEP  = float(config.get("IMG_SLEEP",  "1.2")) # 单张图片间隔(秒)
 OUTDIR = pathlib.Path(f"backup_{WECHAT_ACCOUNT_NAME}")
-TIMEOUT = 30
+TIMEOUT = 100
 
 BASE = "https://mp.weixin.qq.com"
 LIST_ENDPOINT = f"{BASE}/cgi-bin/appmsgpublish"
 
 S = requests.Session()
 S.headers.update({
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
     "Cookie": COOKIE,
     "Referer": "https://mp.weixin.qq.com/"
 })
@@ -47,6 +48,12 @@ seen = set(json.loads(STATE_FILE.read_text("utf-8")).get("seen", [])) if STATE_F
 
 def save_state():
     STATE_FILE.write_text(json.dumps({"seen": list(seen)}, ensure_ascii=False, indent=2), "utf-8")
+
+def sleep_with_jitter(base: float, jitter_ratio: float = 1.2):
+    # 在 [base*(1-0.1), base*(1+0.1)] 之间随机
+    jitter = base * jitter_ratio * (random.random() - 0.5)
+    time.sleep(max(0.0, base + jitter))
+
 
 def sanitize(name: str) -> str:
     s = re.sub(r"[\\/:*?\"<>|\r\n]+", "_", (name or "untitled")).strip()
@@ -124,7 +131,7 @@ def localize_images(content, folder: pathlib.Path):
             img["src"] = f"./images/{fn}"
             if "data-src" in img.attrs: del img["data-src"]
             idx += 1
-            time.sleep(0.05)
+            sleep_with_jitter(IMG_SLEEP, 1.2)
         except Exception:
             continue
     return str(soup)
@@ -185,6 +192,20 @@ def extract_links_from_publish_item(item: dict):
             links.append((title, link, ts))
     return links
 
+
+# 预检
+def probe() -> bool:
+    try:
+        page = fetch_publish_page(0, 1)
+        if page.get("publish_list"):
+            print("✅ 预检通过：publish_list 可见")
+            return True
+        print("⚠️ 预检未见 publish_list，可能需刷新 Cookie/Token")
+        return False
+    except Exception as e:
+        print("❌ 预检失败：", e)
+        return False
+
 def main():
     begin = 0
     while True:
@@ -195,13 +216,14 @@ def main():
         for item in publish_list:
             for title, link, ts in extract_links_from_publish_item(item):
                 save_article(title, link, ts)
-                time.sleep(SLEEP_ART)
+                sleep_with_jitter(SLEEP_ART)
         begin += COUNT_PER_PAGE
-        time.sleep(SLEEP_LIST)
+        sleep_with_jitter(SLEEP_LIST)
 
 if __name__ == "__main__":
     if not (COOKIE and TOKEN):
-        raise SystemExit("请先设置 WECHAT_BACKEND_COOKIE / WECHAT_BACKEND_TOKEN 环境变量")
+        raise SystemExit("请在 env.json 中配置 COOKIE 和 TOKEN")
     OUTDIR.mkdir(parents=True, exist_ok=True)
+    if not probe():
+        raise SystemExit("预检失败，请检查 COOKIE 和 TOKEN")
     main()
-    print("✅ 完成 →", OUTDIR.resolve())
