@@ -31,10 +31,14 @@ WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
 COUNT_PER_PAGE = int(config.get("COUNT", "10"))   # 建议 10（接口上限）
-SLEEP_LIST = float(config.get("SLEEP_LIST", "2.5"))  # 列表页间隔(秒) 2.5 起
-SLEEP_ART  = float(config.get("SLEEP_ART",  "1.5"))  # 单篇抓取间隔(秒) 1.5 起
-IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.08")) # 单张图片间隔(秒)
-OUTDIR = pathlib.Path(f"./../Wechat-Backup/{WECHAT_ACCOUNT_NAME}")
+SLEEP_LIST = float(config.get("SLEEP_LIST", "25"))  # 列表页间隔(秒) 2.5 起 # 我加得比较高
+SLEEP_ART  = float(config.get("SLEEP_ART",  "15"))  # 单篇抓取间隔(秒) 1.5 起 # 我也往高了加
+IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.8")) # 单张图片间隔(秒) 0.08起 # 也是扩大了十倍
+
+script_dir = pathlib.Path(__file__).resolve().parent
+project_root = script_dir.parent
+OUTDIR = project_root / "Wechat-Backup" / WECHAT_ACCOUNT_NAME
+
 TIMEOUT = 100
 
 BASE = "https://mp.weixin.qq.com"
@@ -58,7 +62,7 @@ seen = set(json.loads(STATE_FILE.read_text("utf-8")).get("seen", [])) if STATE_F
 def save_state():
     STATE_FILE.write_text(json.dumps({"seen": list(seen)}, ensure_ascii=False, indent=2), "utf-8")
 
-def sleep_with_jitter(base: float, jitter_ratio: float = 1.2):
+def sleep_with_jitter(base: float, jitter_ratio: float = 0.2):
     # 在 [base*(1-0.1), base*(1+0.1)] 之间随机
     jitter = base * jitter_ratio * (random.random() - 0.5)
     time.sleep(max(0.0, base + jitter))
@@ -88,8 +92,11 @@ def fetch_publish_page(begin: int, count: int) -> dict:
     # 1) JSON
     try:
         data = r.json()
-        if "publish_page" in data:
-            return json.loads(data["publish_page"])
+        pp = data.get("publish_page")
+        if isinstance(pp, str):
+            return json.loads(pp)
+        elif isinstance(pp, dict):
+            return pp
     except Exception:
         pass
     # 2) HTML 变量
