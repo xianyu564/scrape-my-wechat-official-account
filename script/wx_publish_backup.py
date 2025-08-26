@@ -4,7 +4,8 @@
 import os, re, json, time, pathlib, hashlib, html, random
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, parse_qs
+import mimetypes
 
 # ===== 从env.json读取配置 =====
 def load_env_config():
@@ -35,6 +36,21 @@ SLEEP_LIST = float(config.get("SLEEP_LIST", "25"))  # 列表页间隔(秒) 2.5 �
 SLEEP_ART  = float(config.get("SLEEP_ART",  "15"))  # 单篇抓取间隔(秒) 1.5 起 # 我也往高了加
 IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.8")) # 单张图片间隔(秒) 0.08起 # 也是扩大了十倍
 
+# 新增：时间窗（env.json 可选填 START_DATE / END_DATE，格式 YYYY-MM-DD）
+START_DATE = config.get("START_DATE", "")  # 例如 "2015-01-01"
+END_DATE   = config.get("END_DATE", "")    # 例如 "2035-12-31"
+
+def to_ts(dstr: str, end=False) -> int | None:
+    if not dstr:
+        return None
+    t = time.strptime(dstr, "%Y-%m-%d")           # 以本地时区解析
+    ts = int(time.mktime(t))                      # 当天 00:00:00
+    return ts + (24*3600 - 1) if end else ts
+
+START_TS = to_ts(START_DATE, end=False)
+END_TS   = to_ts(END_DATE,   end=True)
+
+
 script_dir = pathlib.Path(__file__).resolve().parent
 project_root = script_dir.parent
 OUTDIR = project_root / "Wechat-Backup" / WECHAT_ACCOUNT_NAME
@@ -53,6 +69,18 @@ S.headers.update({
     "Accept-Language": "zh-CN,zh;q=0.9",
     "X-Requested-With": "XMLHttpRequest"
 })
+
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+retry = Retry(
+    total=5,
+    backoff_factor=0.3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods={"GET"},
+)
+S.mount("https://", HTTPAdapter(max_retries=retry))
+S.mount("http://",  HTTPAdapter(max_retries=retry))
 
 
 OUTDIR.mkdir(parents=True, exist_ok=True)
@@ -187,6 +215,10 @@ def localize_images(content, folder: pathlib.Path, referer_link: str = ""):
             if not resp.ok or not resp.content:
                 continue
             ext = ".jpg"
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            guess = mimetypes.guess_extension(ctype) if ctype else None
+            if guess:
+                ext = ".jpg" if guess == ".jpe" else guess
             m = re.search(r"wx_fmt=(\w+)", full)
             if m: ext = "." + m.group(1)
             fn = f"img_{idx:03d}{ext}"
@@ -205,9 +237,22 @@ def date_str_from_ts(ts: int) -> tuple[str, str]:
     t = time.localtime(ts or int(time.time()))
     return time.strftime("%Y", t), time.strftime("%Y-%m-%d", t)
 
+# 新增：稳定的去重键
+def key_from_link(link: str) -> str:
+    try:
+        u = urlparse(link)
+        q = parse_qs(u.query)
+        mid = (q.get("mid") or [None])[0]
+        idx = (q.get("idx") or [None])[0]
+        if mid and idx:
+            return f"{mid}_{idx}"
+    except Exception:
+        pass
+    return hashlib.md5(link.encode("utf-8")).hexdigest()
+
 def save_article(title: str, link: str, ts: int):
     # 去重
-    key = hashlib.md5(link.encode("utf-8")).hexdigest()
+    key = key_from_link(link)
     if key in seen:
         return
 
@@ -326,6 +371,9 @@ def main():
         # 逐条保存
         for item in publish_list:
             for title, link, ts in extract_links_from_publish_item(item):
+                # 时间窗过滤（默认不过滤）
+                if (START_TS and ts and ts < START_TS) or (END_TS and ts and ts > END_TS):
+                    continue
                 save_article(title, link, ts)
                 sleep_with_jitter(SLEEP_ART)
 
