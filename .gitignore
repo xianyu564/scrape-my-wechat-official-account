@@ -1,39 +1,65 @@
+# 环境配置文件
+env.json
+
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+*.so
 .Python
-env/
-venv/
-.venv/
-pip-wheel-metadata/
-*.egg-info/
-dist/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# OS / Editors
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
 .DS_Store
 Thumbs.db
-.idea/
-.vscode/
 
-# Local env & secrets
-.env
-env.json
-env.local.json
-env.*.local.json
-*.local
-.env.*.local
-
-# Logs
+# 日志文件
 *.log
 
-# Coverage / tests
-.coverage
-.pytest_cache/
-htmlcov/
+# 备份目录
+backup_*/
 
-# Node (if any front-end helpers later)
-node_modules/
+# 临时文件
+*.tmp
+*.temp
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
