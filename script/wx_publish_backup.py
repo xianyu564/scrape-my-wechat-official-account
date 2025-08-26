@@ -1,7 +1,7 @@
 # script/wx_publish_backup.py
 
 # wx_publish_backup.py  (year-only folders; HTML named as YYYY-MM-DD_<title>.html)
-import os, re, json, time, pathlib, hashlib, html, random
+import os, re, json, time, pathlib, hashlib, html, random, logging, sys
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse, parse_qs
@@ -86,6 +86,19 @@ S.mount("http://",  HTTPAdapter(max_retries=retry))
 OUTDIR.mkdir(parents=True, exist_ok=True)
 STATE_FILE = OUTDIR / "_state.json"
 seen = set(json.loads(STATE_FILE.read_text("utf-8")).get("seen", [])) if STATE_FILE.exists() else set()
+
+
+# 追加：日志到控制台 + 文件（UTF-8），记录异常堆栈
+LOGFILE = OUTDIR / "errors.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(LOGFILE, encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger("wx_backup")
 
 def save_state():
     STATE_FILE.write_text(json.dumps({"seen": list(seen)}, ensure_ascii=False, indent=2), "utf-8")
@@ -195,9 +208,13 @@ def wrap_full_html(body_html: str, title: str) -> str:
 
 
 def download(url: str) -> str:
-    r = S.get(url, timeout=TIMEOUT)
-    r.raise_for_status()
-    return r.text
+    try:
+        r = S.get(url, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.text
+    except Exception:
+        logger.exception(f"下载正文失败: {url}")
+        return None
 
 def localize_images(content, folder: pathlib.Path, referer_link: str = ""):
     imgdir = folder / "images"
@@ -257,8 +274,13 @@ def save_article(title: str, link: str, ts: int):
         return
 
     html_text = download(link)
+    if not html_text:
+        raise RuntimeError("正文下载为空")
+    
     soup = BeautifulSoup(html_text, "html.parser")
     content = soup.select_one("#js_content") or soup.body or soup
+    if content is None:
+        raise RuntimeError("未找到正文容器 (#js_content / <body>)")
 
     # 去掉 js_content 上的隐藏样式，避免离线看不到
     try:
@@ -352,7 +374,14 @@ def main():
 
     while True:
         # 先按配置的 COUNT_PER_PAGE 拉
-        page = fetch_publish_page(begin, COUNT_PER_PAGE)
+        try:
+            page = fetch_publish_page(begin, COUNT_PER_PAGE)
+        except Exception:
+            logger.exception(f"列表页抓取失败，已跳过：begin={begin} count={COUNT_PER_PAGE}")
+            begin += COUNT_PER_PAGE
+            sleep_with_jitter(SLEEP_LIST)
+            continue
+        
         publish_list = page.get("publish_list") or []
         total = total if total is not None else page.get("total_count", None)
 
@@ -374,8 +403,13 @@ def main():
                 # 时间窗过滤（默认不过滤）
                 if (START_TS and ts and ts < START_TS) or (END_TS and ts and ts > END_TS):
                     continue
-                save_article(title, link, ts)
-                sleep_with_jitter(SLEEP_ART)
+                try:
+                    save_article(title, link, ts)
+                except Exception:
+                    # 不中断任务，记录完整堆栈并继续下一篇
+                    logger.exception(f"保存失败，已跳过：title={title} url={link}")
+                finally:
+                    sleep_with_jitter(SLEEP_ART)
 
         # 用“实际返回条数”推进 begin，避免跳页或空页
         begin += len(publish_list)
