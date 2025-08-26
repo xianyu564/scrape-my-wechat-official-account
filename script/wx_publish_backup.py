@@ -6,15 +6,29 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-# ===== 必填：从浏览器复制 =====
-COOKIE = os.getenv("WECHAT_BACKEND_COOKIE", "")
-TOKEN  = os.getenv("WECHAT_BACKEND_TOKEN", "")  # 发表记录页URL里的 token
+# ===== 从env.json读取配置 =====
+def load_env_config():
+    """从env.json文件读取配置"""
+    try:
+        with open("env.json", "r", encoding="utf-8") as f:
+            config = json.load(f)
+        return config
+    except FileNotFoundError:
+        raise FileNotFoundError("请创建env.json文件，参考env.json.EXAMPLE")
+    except json.JSONDecodeError:
+        raise ValueError("env.json文件格式错误")
+
+# 加载配置
+config = load_env_config()
+COOKIE = config.get("COOKIE", "")
+TOKEN = config.get("TOKEN", "")  # 发表记录页URL里的 token
+WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
-COUNT_PER_PAGE = int(os.getenv("COUNT", "20"))   # 建议 20（接口上限）
-SLEEP_LIST = float(os.getenv("SLEEP_LIST", "0.6"))
-SLEEP_ART  = float(os.getenv("SLEEP_ART", "0.3"))
-OUTDIR = pathlib.Path(os.getenv("OUTDIR", "wx_backup_publish"))
+COUNT_PER_PAGE = int(config.get("COUNT", "20"))   # 建议 20（接口上限）
+SLEEP_LIST = float(config.get("SLEEP_LIST", "0.6"))
+SLEEP_ART  = float(config.get("SLEEP_ART", "0.3"))
+OUTDIR = pathlib.Path(f"backup_{WECHAT_ACCOUNT_NAME}")
 TIMEOUT = 30
 
 BASE = "https://mp.weixin.qq.com"
