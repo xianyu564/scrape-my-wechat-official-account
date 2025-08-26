@@ -32,8 +32,8 @@
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 20px; color: white; margin: 20px 0; box-shadow: 0 10px 20px rgba(0,0,0,0.15);">
 
 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-  <div style="font-size: 3em;">🎁</div>
   <div>
+    <div style="font-size: 3em;">🎁</div>
     <h3 style="margin: 0 0 10px 0; color: white;">《文不加点的张衔瑜》的诞生</h3>
     <p style="margin: 0; opacity: 0.9;">这是我成年当天的礼物</p>
   </div>
