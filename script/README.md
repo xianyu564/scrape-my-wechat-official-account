@@ -28,14 +28,42 @@
 
 ### 2. 运行脚本
 
-```bash
-# 在项目根目录运行
-python script/wx_publish_backup.py
+### 平台命令对照
 
-# 或者在script目录下运行
-cd script
-python wx_publish_backup.py
+- Windows PowerShell
+```powershell
+py -3 script\wx_publish_backup.py
 ```
+
+- macOS / Linux（终端）
+```bash
+python3 script/wx_publish_backup.py
+```
+
+### 一键运行示例
+
+```bash
+# 克隆并进入项目
+git clone https://github.com/xianyu564/scrape-my-wechat-official-account.git
+cd scrape-my-wechat-official-account
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 复制示例配置并编辑
+cp env.json.EXAMPLE env.json
+# 用编辑器填入 COOKIE / TOKEN / WECHAT_ACCOUNT_NAME
+
+# 运行
+python3 script/wx_publish_backup.py
+```
+
+### 错误恢复建议（速查）
+
+- 403 / 预检失败：刷新登录态，重新复制 Cookie 与 token；把 `COUNT` 暂时设为 `1`
+- 频繁失败/限速：上调 `SLEEP_LIST` / `SLEEP_ART` / `IMG_SLEEP`，分多次运行
+- HTML 空白或图片丢失：优先用本地静态服务器访问；确认 `images/` 已生成
+- 断点续传：删除（或备份后清空）对应目录下的 `_state.json` 可全量重抓
 
 ## 运行流程
 

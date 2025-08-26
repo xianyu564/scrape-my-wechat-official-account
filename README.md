@@ -1,4 +1,3 @@
-# 🚀 微信公众号文章备份工具
 
 <div align="center">
   <h1 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 20px 0; font-size: 2.5em;">
@@ -23,7 +22,8 @@
 
 <div align="center" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   <p style="margin: 0; font-size: 1.1em; color: #333;">
-    🎯 <strong>本工具专为《文不加点的张衔瑜》个人公众号设计</strong>，已通过个人职业兴趣认证(哲学博士，专注于AI 、计算化学、生物医药、 周易等，探索科技与哲学的边界。)
+    🎯 <strong>本工具专为《文不加点的张衔瑜》个人公众号设计</strong>
+    本公众号已通过个人职业兴趣认证(哲学博士，专注于AI 、计算化学、生物医药、 周易等，探索科技与哲学的边界。)
   </p>
 </div>
 
@@ -40,7 +40,7 @@
 </div>
 
 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); margin-bottom: 20px;">
-  <h4 style="margin: 0 0 15px 0; color: white;">📚 八年写作历程</h4>
+  <h4 style="margin: 0 0 15px 0; color: white;">📚 八年公众号写作历程</h4>
   <ul style="margin: 0; padding-left: 20px; opacity: 0.9;">
     <li>累计创作了400多篇文章，记录人生各个阶段的思考</li>
     <li>涵盖生活日志、旅行笔记、社会评论等多元内容</li>
@@ -166,6 +166,45 @@ cd script
 python wx_publish_backup.py
 ```
 
+## 🧭 复用者快速起步（Fork/Clone 即用）
+
+> 面向想直接复用本工具的开发者：不改代码，配置好 `env.json` 即可跑通。
+
+### 最小可运行示例
+
+1. 复制示例配置：
+   - 将项目根目录下的 `env.json.EXAMPLE` 复制为 `env.json`
+   - 至少填写三项：
+
+```json
+{
+  "WECHAT_ACCOUNT_NAME": "你的公众号名称",
+  "COOKIE": "从浏览器开发者工具复制的Cookie",
+  "TOKEN": "发表记录页URL中的token值"
+}
+```
+
+2. 运行（任选其一）：
+
+- Windows PowerShell
+```powershell
+py -3 script\wx_publish_backup.py
+```
+
+- macOS / Linux（终端）
+```bash
+python3 script/wx_publish_backup.py
+```
+
+3. 输出位置：
+   - 文章会按年份落到 `Wechat-Backup/<你的公众号名称>/YYYY/` 下
+   - 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`
+
+### 常见上手问题（超简版）
+- 403 或“预检失败”：Cookie/Token 过期 → 重新抓取
+- HTML 打开空白：用 `python -m http.server` 启动本地静态服务器后访问
+- 速度过快被限流：适当调大 `SLEEP_LIST`/`SLEEP_ART`/`IMG_SLEEP`
+
 ## 📦 安装依赖
 
 ```bash
@@ -191,9 +230,9 @@ pip install requests beautifulsoup4 lxml
 
 ```json
 {
-  "WECHAT_APPID": "你的微信公众号APPID",
-  "WECHAT_APPSECRET": "你的微信公众号APPSECRET", 
-  "WECHAT_ACCOUNT_NAME": "你的微信公众号名称",
+  "WECHAT_APPID": "你的微信公众号APPID", //其实不重要，这是上一个项目的遗留，属于公众号开发接口
+  "WECHAT_APPSECRET": "你的微信公众号APPSECRET",  // 同上
+  "WECHAT_ACCOUNT_NAME": "你的微信公众号名称", //为了命名的，可以是任意名字，不非得跟公众号相同
   "COOKIE": "从浏览器复制的Cookie",
   "TOKEN": "从发表记录页URL获取的token",
   "COUNT": "20",
