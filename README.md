@@ -20,6 +20,15 @@
   </div>
 </div>
 
+> 本仓库同时包含两大部分：
+> - 备份工具代码（可复用抓取任意公众号已发文）
+> - 已完整备份的个人公众号《文不加点的张衔瑜》全文语料（可直接阅读、研究与再训练）
+
+### 🔗 快速链接（内容直达）
+
+- 文章总目录（脚本生成，含年度字数/图片合计、全局编号）：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
+- 主题合集（尚未完成）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
+
 <div align="center" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   <p style="margin: 0; font-size: 1.1em; color: #333;">
     🎯 <strong>本工具专为《文不加点的张衔瑜》个人公众号设计</strong>
@@ -29,7 +38,7 @@
 ## 📚 关于个人公众号（文不加点的张衔瑜）
 
 - **定位**：个人日记型公众号，记录日常生活、旅行见闻、思想火花与社会观察。
-- **时间跨度与规模**：累计八年写作，已备份 400+ 篇文章（见 `Wechat-Backup/`）。
+- **时间跨度与规模**：累计八年写作，已备份八十万字、近四百篇图文（见 `Wechat-Backup/`）。
 - **学术与兴趣背景**：哲学博士，关注与涉猎 AI、计算化学、生物医药、周易等领域，探索科技与哲学的边界（已在公众号完成个人职业兴趣认证）。
 - **组织方式**：按年份/日期自动归档；每篇含 `HTML`、`Markdown`、`images/` 与 `meta.json`，便于阅读、复用与研究。
 - **使用目的**：为自我存档、长期复盘、社会现场的自反式研究，以及后续的语料分析与个性化对话模型提供高质量素材。
@@ -48,7 +57,7 @@
 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); margin-bottom: 20px;">
   <h4 style="margin: 0 0 15px 0; color: white;">📚 八年公众号写作历程</h4>
   <ul style="margin: 0; padding-left: 20px; opacity: 0.9;">
-    <li>累计创作了400多篇文章，记录人生各个阶段的思考</li>
+    <li>累计创作了八十万字、近400篇图文，记录人生各个阶段的思考</li>
     <li>涵盖生活日志、旅行笔记、社会评论等多元内容</li>
   </ul>
 </div>
@@ -107,6 +116,16 @@
   <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
     <h3 style="margin: 0 0 15px 0; color: white;">📝 多格式输出</h3>
     <p style="margin: 0; opacity: 0.9;">支持HTML和Markdown格式输出，满足不同使用需求。</p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
+    <h3 style="margin: 0 0 15px 0; color: white;">📚 已备份语料库</h3>
+    <p style="margin: 0; opacity: 0.9;">仓库内已自带《文不加点的张衔瑜》多年完整备份，可直接检索/分析/引用。</p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
+    <h3 style="margin: 0 0 15px 0; color: white;">🤖 语料再分析与AI再训练</h3>
+    <p style="margin: 0; opacity: 0.9;">支持词频/年度/主题等社会科学分析，及基于个人语料的对话模型再训练。</p>
   </div>
 
   <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
@@ -233,7 +252,7 @@ python wx_publish_backup.py
 
 ## 📁 输出结构
 
-备份文件将保存在 `backup_<微信公众号名字>/` 目录下：
+备份文件将保存在 `Wechat-Backup/<微信公众号名称>/` 目录下：
 
 ```
 Wechat-Backup/<微信公众号名称>/
@@ -246,6 +265,14 @@ Wechat-Backup/<微信公众号名称>/
 │ └── ...
 └── _state.json # 已抓取链接指纹，供断点续传
 ```
+
+### 数据指引（本仓库已含示例语料）
+
+- 主目录：`Wechat-Backup/文不加点的张衔瑜/`
+- 脚本目录（带统计）：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
+- 主题合集（暂无）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
+
+> 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。脚本目录会给出年度字数/图片合计与全局编号，以便横向研究。
 
 ## 🤝 贡献指南
 
@@ -291,7 +318,7 @@ Wechat-Backup/<微信公众号名称>/
 
 ## 🔮 项目展望
 
-本项目不仅是一个备份工具，更是个人知识资产的基础设施。基于备份的400+篇个人文章，我们规划了以下发展方向：
+本项目不仅是一个备份工具，更是个人知识资产的基础设施。基于仓库内已备份的八十万字、近四百篇个人文章，我们规划了以下发展方向：
 
 ### 🤖 个人AI对话模型
 - 利用个人写作风格和知识结构训练专属AI助手
@@ -351,10 +378,6 @@ Wechat-Backup/<微信公众号名称>/
 
 <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 30px; border-radius: 20px; margin: 30px 0; text-align: center; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
 
-<h2 style="margin: 0 0 20px 0; color: #333;">⭐️ 如果这个项目对您有帮助，请给我们一个星标！</h2>
-
-<p style="font-size: 1.1em; color: #666; margin-bottom: 25px;">
-  您的支持是我们持续改进的最大动力
-</p>
+<h2 style="margin: 0 0 20px 0; color: #333;">⭐️ 想要一个星标！</h2>
 
 </div>
