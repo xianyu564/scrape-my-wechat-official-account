@@ -180,15 +180,11 @@ pip install requests beautifulsoup4 lxml
 
 ## ⚙️ 配置说明
 
-<div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-  <p style="margin: 0; font-size: 1.1em; color: #333;">
-    💡 <strong>配置提示</strong>：就像人生需要规划一样，工具也需要正确的配置才能发挥最大作用
-  </p>
-</div>
-
 ### 基础配置步骤
 
 1. **复制配置文件**：复制 `env.json.EXAMPLE` 为 `env.json`
+  * 🔐 安全：env.json 已加入 .gitignore，请勿提交。Cookie 常含 HttpOnly 字段，不会出现在 document.cookie，需在 DevTools/Network 里从真实请求复制。
+  *⚠️ 有效期：Cookie/Token 有时效，失效时重登后台并重新复制。
 2. **填写配置信息**：根据你的公众号信息填写相应字段
 
 ### 配置文件详解
@@ -241,15 +237,15 @@ python wx_publish_backup.py
 备份文件将保存在 `backup_<微信公众号名字>/` 目录下：
 
 ```
-backup_文不加点的张衔瑜/
+Wechat-Backup/<微信公众号名称>/
 ├── 2025/
-│   ├── 2025-08-26_文章标题1/
-│   │   ├── 2025-08-26_文章标题1.html
-│   │   ├── article.md
-│   │   ├── meta.json
-│   │   └── images/
-│   └── 2024-08-26_文章标题2/
-└── _state.json
+│ ├── 2025-08-26_文章标题1/
+│ │ ├── 2025-08-26_文章标题1.html # 可双击离线打开
+│ │ ├── 2025-08-26_文章标题1.md # 外链保留，适合 GitHub/Obsidian
+│ │ ├── meta.json
+│ │ └── images/
+│ └── ...
+└── _state.json # 已抓取链接指纹，供断点续传
 ```
 
 ## 🤝 贡献指南
