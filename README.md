@@ -402,13 +402,6 @@ Wechat-Backup/<微信公众号名称>/
 
 ---
 
-<div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 30px; border-radius: 20px; margin: 30px 0; text-align: center; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
-
-<h2 style="margin: 0 0 20px 0; color: #333;">⭐️ 想要一个星标！</h2>
-
-</div>
-
-
 <div align="center" style="margin: 12px 0 24px 0;">
   <img src=".github/assets/icon/文不加点的张衔瑜-公众号二维码.jpg" alt="文不加点的张衔瑜｜公众号二维码" width="220" />
   <div style="color: #666; margin-top: 6px;">文不加点的张衔瑜</div>
