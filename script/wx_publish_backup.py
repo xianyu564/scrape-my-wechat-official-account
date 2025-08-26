@@ -34,7 +34,7 @@ COUNT_PER_PAGE = int(config.get("COUNT", "10"))   # 建议 10（接口上限）
 SLEEP_LIST = float(config.get("SLEEP_LIST", "2.5"))  # 列表页间隔(秒) 2.5 起
 SLEEP_ART  = float(config.get("SLEEP_ART",  "1.5"))  # 单篇抓取间隔(秒) 1.5 起
 IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.08")) # 单张图片间隔(秒)
-OUTDIR = pathlib.Path(f"backup_{WECHAT_ACCOUNT_NAME}")
+OUTDIR = pathlib.Path(f"./../Wechat-Backup/{WECHAT_ACCOUNT_NAME}")
 TIMEOUT = 100
 
 BASE = "https://mp.weixin.qq.com"
@@ -79,6 +79,10 @@ def fetch_publish_page(begin: int, count: int) -> dict:
         "f": "json",
         "ajax": "1",
     }
+    
+    # a maybe key need
+    params.update({"sub_action": "list_ex", "free_publish_type": "1"})
+
     r = S.get(LIST_ENDPOINT, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     # 1) JSON
@@ -235,16 +239,36 @@ def probe() -> bool:
 
 def main():
     begin = 0
+    page_idx = 0
+    total = None
+
     while True:
+        # 先按配置的 COUNT_PER_PAGE 拉
         page = fetch_publish_page(begin, COUNT_PER_PAGE)
         publish_list = page.get("publish_list") or []
+        total = total if total is not None else page.get("total_count", None)
+
+        # 如果空，降级重试：count=1（很多号只在 count=1 时返回）
+        if not publish_list and COUNT_PER_PAGE != 1:
+            page = fetch_publish_page(begin, 1)
+            publish_list = page.get("publish_list") or []
+
+        print(f"[list] begin={begin} count_req={COUNT_PER_PAGE} -> got={len(publish_list)}"
+              + (f" total={total}" if total is not None else ""))
+
         if not publish_list:
+            print("→ 列表为空，结束。若非预期，请降低 COUNT 到 1~10 再试。")
             break
+
+        # 逐条保存
         for item in publish_list:
             for title, link, ts in extract_links_from_publish_item(item):
                 save_article(title, link, ts)
                 sleep_with_jitter(SLEEP_ART)
-        begin += COUNT_PER_PAGE
+
+        # 用“实际返回条数”推进 begin，避免跳页或空页
+        begin += len(publish_list)
+        page_idx += 1
         sleep_with_jitter(SLEEP_LIST)
 
 # --- program entry ---
