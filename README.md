@@ -28,6 +28,7 @@
 
 - 文章总目录（脚本生成，含年度字数/图片合计、全局编号）：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
 - 主题合集（尚未完成）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
+- 语料主目录（含全部文章的 HTML/MD/images/meta）：`Wechat-Backup/文不加点的张衔瑜/`
 
 <div align="center" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   <p style="margin: 0; font-size: 1.1em; color: #333;">
@@ -42,6 +43,17 @@
 - **学术与兴趣背景**：哲学博士，关注与涉猎 AI、计算化学、生物医药、周易等领域，探索科技与哲学的边界（已在公众号完成个人职业兴趣认证）。
 - **组织方式**：按年份/日期自动归档；每篇含 `HTML`、`Markdown`、`images/` 与 `meta.json`，便于阅读、复用与研究。
 - **使用目的**：为自我存档、长期复盘、社会现场的自反式研究，以及后续的语料分析与个性化对话模型提供高质量素材。
+
+### 📦 仓库结构速览（代码 + 已备份语料）
+
+- **备份工具代码**：
+  - 脚本入口：`script/wx_publish_backup.py`
+  - 配置示例：`env.json.EXAMPLE`（复制为 `env.json` 后填写）
+  - 文档：`script/README.md`、`docs/TROUBLESHOOTING.md`
+- **已备份语料（可直接阅读/研究/再训练）**：
+  - 主目录：`Wechat-Backup/文不加点的张衔瑜/`
+  - 目录索引：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
+  - 主题合集（进行中）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
 
 ## 💭 项目动机
 
@@ -274,6 +286,14 @@ Wechat-Backup/<微信公众号名称>/
 
 > 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。脚本目录会给出年度字数/图片合计与全局编号，以便横向研究。
 
+## 🧪 二次利用：语料再分析与 AI 再训练
+
+- 从这里开始：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`（定位文章与年份统计）
+- 研究路线建议：见 `docs/FUTURE_VISION.md`（“先获得感 → 认知/成长挖掘 → 语义检索/RAG → 个性化模型”）
+- 管理与进展：见 `STATUS.md`（阶段性目标与完成度）
+
+> 提示：若你希望进行词频/主题/年度分析，建议以 `*.md` 作为语料输入；若做版式与图片回看，使用 `*.html` 更直观。
+
 ## 🤝 贡献指南
 
 我们欢迎所有形式的贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解如何参与项目开发。
@@ -361,6 +381,12 @@ Wechat-Backup/<微信公众号名称>/
 - `docs/TROUBLESHOOTING.md`（完整指南）
 - `script/README.md`（平台命令对照与错误恢复速查）
 
+### 已知问题与优化建议
+
+- 含空格/括号/特殊字符的路径已在目录中做 URL 编码处理（如空格→`%20`，`(`→`%28`）。
+- 本地直接打开 HTML 可能受浏览器策略限制，建议用 `python -m http.server` 启动静态服务器后访问。
+- Windows 路径大小写与编码请遵循仓库现状，避免自行改名导致链接失效。
+
 ## 📞 获取帮助
 
 如果您需要帮助：
@@ -380,4 +406,10 @@ Wechat-Backup/<微信公众号名称>/
 
 <h2 style="margin: 0 0 20px 0; color: #333;">⭐️ 想要一个星标！</h2>
 
+</div>
+
+
+<div align="center" style="margin: 12px 0 24px 0;">
+  <img src=".github/assets/icon/文不加点的张衔瑜-公众号二维码.jpg" alt="文不加点的张衔瑜｜公众号二维码" width="220" />
+  <div style="color: #666; margin-top: 6px;">文不加点的张衔瑜</div>
 </div>
