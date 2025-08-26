@@ -33,8 +33,7 @@
 
 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
   <div>
-    <div style="font-size: 3em;">🎁</div>
-    <h3 style="margin: 0 0 10px 0; color: white;">《文不加点的张衔瑜》的诞生</h3>
+    <h3 style="margin: 0 0 10px 0; color: white;">🎁《文不加点的张衔瑜》的诞生 🎁</h3>
     <p style="margin: 0; opacity: 0.9;">这是我成年当天的礼物</p>
   </div>
 </div>
@@ -117,26 +116,22 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
 
 <div style="text-align: center; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px; backdrop-filter: blur(10px);">
-  <div style="font-size: 2em; margin-bottom: 10px;">📥</div>
-  <h3 style="margin: 0 0 10px 0; color: white;">1. 克隆仓库</h3>
+  <h3 style="margin: 0 0 10px 0; color: white;">📥 1. 克隆仓库</h3>
   <p style="margin: 0; opacity: 0.9; font-size: 0.9em;">获取项目代码到本地，开始你的备份之旅</p>
 </div>
 
 <div style="text-align: center; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px; backdrop-filter: blur(10px);">
-  <div style="font-size: 2em; margin-bottom: 10px;">📦</div>
-  <h3 style="margin: 0 0 10px 0; color: white;">2. 安装依赖</h3>
+  <h3 style="margin: 0 0 10px 0; color: white;">📦 2. 安装依赖</h3>
   <p style="margin: 0; opacity: 0.9; font-size: 0.9em;">安装Python依赖包，为工具运行做好准备</p>
 </div>
 
 <div style="text-align: center; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px; backdrop-filter: blur(10px);">
-  <div style="font-size: 2em; margin-bottom: 10px;">⚙️</div>
-  <h3 style="margin: 0 0 10px 0; color: white;">3. 配置环境</h3>
+  <h3 style="margin: 0 0 10px 0; color: white;">⚙️ 3. 配置环境</h3>
   <p style="margin: 0; opacity: 0.9; font-size: 0.9em;">设置Cookie和Token，让工具能够访问你的公众号</p>
 </div>
 
 <div style="text-align: center; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px; backdrop-filter: blur(10px);">
-  <div style="font-size: 2em; margin-bottom: 10px;">🚀</div>
-  <h3 style="margin: 0 0 10px 0; color: white;">4. 运行脚本</h3>
+  <h3 style="margin: 0 0 10px 0; color: white;">🚀 4. 运行脚本</h3>
   <p style="margin: 0; opacity: 0.9; font-size: 0.9em;">开始备份文章，让每一篇文字都得到妥善保存</p>
 </div>
 
