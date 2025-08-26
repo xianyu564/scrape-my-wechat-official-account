@@ -30,7 +30,7 @@ TOKEN = config.get("TOKEN", "")  # 发表记录页URL里的 token
 WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
-COUNT_PER_PAGE = int(config.get("COUNT", "20"))   # 建议 20（接口上限）
+COUNT_PER_PAGE = int(config.get("COUNT", "10"))   # 建议 10（接口上限）
 SLEEP_LIST = float(config.get("SLEEP_LIST", "2.5"))  # 列表页间隔(秒) 2.5 起
 SLEEP_ART  = float(config.get("SLEEP_ART",  "1.5"))  # 单篇抓取间隔(秒) 1.5 起
 IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.08")) # 单张图片间隔(秒)
