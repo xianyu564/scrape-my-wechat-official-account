@@ -10,7 +10,12 @@ from urllib.parse import urljoin
 def load_env_config():
     """从env.json文件读取配置"""
     try:
-        with open("env.json", "r", encoding="utf-8") as f:
+        # 获取脚本所在目录的上级目录（项目根目录）
+        script_dir = pathlib.Path(__file__).parent
+        project_root = script_dir.parent
+        env_file = project_root / "env.json"
+        
+        with open(env_file, "r", encoding="utf-8") as f:
             config = json.load(f)
         return config
     except FileNotFoundError:
