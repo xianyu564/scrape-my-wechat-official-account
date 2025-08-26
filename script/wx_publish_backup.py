@@ -40,7 +40,7 @@ IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.8")) # 单张图片间隔(秒) 0.
 START_DATE = config.get("START_DATE", "")  # 例如 "2015-01-01"
 END_DATE   = config.get("END_DATE", "")    # 例如 "2035-12-31"
 
-def to_ts(dstr: str, end=False) -> int | None:
+def to_ts(dstr: str, end=False):
     if not dstr:
         return None
     t = time.strptime(dstr, "%Y-%m-%d")           # 以本地时区解析
