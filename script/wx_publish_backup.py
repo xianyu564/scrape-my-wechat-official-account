@@ -157,7 +157,7 @@ def wrap_full_html(body_html: str, title: str) -> str:
     pre,code{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}}
     blockquote{{border-left:4px solid #ddd; padding-left:12px; color:#555}}
     /* 关键：离线时强制把微信正文容器显示出来 */
-    #js_content, .rich_media_content{visibility:visible !important; opacity:1 !important}
+    #js_content, .rich_media_content{{visibility:visible !important; opacity:1 !important}}
   </style>
 </head>
 <body>
@@ -214,6 +214,15 @@ def save_article(title: str, link: str, ts: int):
     html_text = download(link)
     soup = BeautifulSoup(html_text, "html.parser")
     content = soup.select_one("#js_content") or soup.body or soup
+
+    # 去掉 js_content 上的隐藏样式，避免离线看不到
+    try:
+        st = content.get("style","")
+        st = re.sub(r"(?:^|;)\s*(?:visibility\s*:\s*hidden|opacity\s*:\s*0)\s*;?", "", st, flags=re.I)
+        if st.strip(): content["style"] = st
+        else: content.attrs.pop("style", None)
+    except Exception:
+        pass
 
     year, ymd = date_str_from_ts(ts)
     safe_title = sanitize(title)
