@@ -32,8 +32,8 @@ WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
 COUNT_PER_PAGE = int(config.get("COUNT", "10"))   # 建议 10（接口上限）
-SLEEP_LIST = float(config.get("SLEEP_LIST", "25"))  # 列表页间隔(秒) 2.5 起 # 我加得比较高
-SLEEP_ART  = float(config.get("SLEEP_ART",  "15"))  # 单篇抓取间隔(秒) 1.5 起 # 我也往高了加
+SLEEP_LIST = float(config.get("SLEEP_LIST", "2.5"))  # 列表页间隔(秒) 2.5 起 # 生产时我扩大了十倍
+SLEEP_ART  = float(config.get("SLEEP_ART",  "1.5"))  # 单篇抓取间隔(秒) 1.5 起 # 生产时我扩大了十倍
 IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.8")) # 单张图片间隔(秒) 0.08起 # 也是扩大了十倍
 
 # 新增：时间窗（env.json 可选填 START_DATE / END_DATE，格式 YYYY-MM-DD）
