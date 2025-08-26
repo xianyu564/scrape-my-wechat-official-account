@@ -26,9 +26,9 @@ WECHAT_ACCOUNT_NAME = config.get("WECHAT_ACCOUNT_NAME", "unknown")
 
 # ===== 可调参数 =====
 COUNT_PER_PAGE = int(config.get("COUNT", "20"))   # 建议 20（接口上限）
-SLEEP_LIST = float(config.get("SLEEP_LIST", "50"))  # 列表页间隔(秒) 1.5 起
-SLEEP_ART  = float(config.get("SLEEP_ART",  "25"))  # 单篇抓取间隔(秒) 1.0 起
-IMG_SLEEP  = float(config.get("IMG_SLEEP",  "1.2")) # 单张图片间隔(秒)
+SLEEP_LIST = float(config.get("SLEEP_LIST", "2.5"))  # 列表页间隔(秒) 2.5 起
+SLEEP_ART  = float(config.get("SLEEP_ART",  "1.5"))  # 单篇抓取间隔(秒) 1.5 起
+IMG_SLEEP  = float(config.get("IMG_SLEEP",  "0.08")) # 单张图片间隔(秒)
 OUTDIR = pathlib.Path(f"backup_{WECHAT_ACCOUNT_NAME}")
 TIMEOUT = 100
 
@@ -39,8 +39,12 @@ S = requests.Session()
 S.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
     "Cookie": COOKIE,
-    "Referer": "https://mp.weixin.qq.com/"
+    "Referer": "https://mp.weixin.qq.com/",
+    "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9",
+    "X-Requested-With": "XMLHttpRequest"
 })
+
 
 OUTDIR.mkdir(parents=True, exist_ok=True)
 STATE_FILE = OUTDIR / "_state.json"
@@ -195,16 +199,34 @@ def extract_links_from_publish_item(item: dict):
 
 # 预检
 def probe() -> bool:
+    """探针请求：确认 COOKIE/TOKEN 有效且能拿到 publish_page"""
+    print("→ 正在预检 appmsgpublish 接口…")
     try:
-        page = fetch_publish_page(0, 1)
-        if page.get("publish_list"):
-            print("✅ 预检通过：publish_list 可见")
-            return True
-        print("⚠️ 预检未见 publish_list，可能需刷新 Cookie/Token")
+        page = fetch_publish_page(0, 1)  # begin=0,count=1 最小负载
+    except requests.HTTPError as e:
+        code = getattr(e.response, "status_code", None)
+        print(f"❌ 预检失败：HTTP {code}，请刷新后台后重新复制 Cookie/Token")
         return False
     except Exception as e:
-        print("❌ 预检失败：", e)
+        print("❌ 预检异常：", repr(e))
         return False
+
+    # fetch_publish_page() 会返回已解析的 publish_page 对象（dict）
+    if not isinstance(page, dict):
+        print("⚠️ 预检返回非 dict，可能被重定向到登录页；请更新 Cookie/Token")
+        return False
+
+    # 常见结构：{"publish_list":[...], "total_count": 433, ...}
+    publish_list = page.get("publish_list")
+    total = page.get("total_count")
+    if isinstance(publish_list, list):
+        print(f"✅ 预检通过：publish_list={len(publish_list)}，total_count={total}")
+        return True
+
+    # 某些异常场景：返回 {} 或者缺少关键字段
+    print("⚠️ 预检未见 publish_list，疑似登录态失效或权限不足；请在 DevTools 的 Network 复制最新的 Request Headers → Cookie")
+    return False
+
 
 def main():
     begin = 0
@@ -220,10 +242,21 @@ def main():
         begin += COUNT_PER_PAGE
         sleep_with_jitter(SLEEP_LIST)
 
+# --- program entry ---
 if __name__ == "__main__":
+    # 1) 基本配置检查
     if not (COOKIE and TOKEN):
         raise SystemExit("请在 env.json 中配置 COOKIE 和 TOKEN")
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    if not probe():
-        raise SystemExit("预检失败，请检查 COOKIE 和 TOKEN")
+
+    # 2) 先跑探针（只请求一页，确认 publish_page / publish_list 可见）
+    ok = probe()
+    if not ok:
+        raise SystemExit("预检未通过：Cookie/Token 可能失效，请在 DevTools 的 Request Headers 复制最新 Cookie")
+
+    # 3) 通过后再正式抓取
     main()
+
+    print("✅ 完成 →", OUTDIR.resolve())
+
+
