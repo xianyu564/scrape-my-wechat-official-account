@@ -156,6 +156,8 @@ def wrap_full_html(body_html: str, title: str) -> str:
     img{{max-width:100%; height:auto}}
     pre,code{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}}
     blockquote{{border-left:4px solid #ddd; padding-left:12px; color:#555}}
+    /* 关键：离线时强制把微信正文容器显示出来 */
+    #js_content, .rich_media_content{visibility:visible !important; opacity:1 !important}
   </style>
 </head>
 <body>
