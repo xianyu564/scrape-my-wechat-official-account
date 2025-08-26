@@ -102,39 +102,80 @@ def fetch_publish_page(begin: int, count: int) -> dict:
 
 def html_to_md(fragment: str) -> str:
     soup = BeautifulSoup(fragment, "html.parser")
+
+    # 1) 先把 <a> 标签替换为 Markdown 语法，避免后续 get_text 丢失 href
+    for a in soup.find_all("a"):
+        href = a.get("href") or a.get("data-link") or ""
+        text = a.get_text(" ", strip=True)
+        if href:
+            a.replace_with(f"[{text}]({href})")
+        else:
+            a.replace_with(text)
+
     lines = []
     for node in soup.descendants:
-        if not getattr(node, "name", None): continue
+        if not getattr(node, "name", None):
+            continue
         tag = node.name.lower()
-        if tag in ("h1","h2","h3"):
+        if tag in ("h1", "h2", "h3"):
             level = {"h1":"#","h2":"##","h3":"###"}[tag]
-            lines.append(f"{level} {node.get_text(strip=True)}\n")
+            lines.append(f"{level} {node.get_text(' ', strip=True)}\n")
         elif tag == "p":
             txt = node.get_text(" ", strip=True)
-            if txt: lines.append(txt + "\n")
+            if txt:
+                lines.append(txt + "\n")
         elif tag == "img" and node.get("src"):
             alt = node.get("alt") or ""
             lines.append(f"![{alt}]({node.get('src')})\n")
+        elif tag == "blockquote":
+            lines.append("> " + node.get_text(" ", strip=True) + "\n")
+        elif tag == "li":
+            lines.append("- " + node.get_text(" ", strip=True))
+        elif tag == "pre":
+            lines.append("```\n" + node.get_text("", strip=True) + "\n```")
     return "\n".join(lines)
+
+
+def wrap_full_html(body_html: str, title: str) -> str:
+    # 轻量页面骨架，确保本地 file:// 直接可渲染
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{title}</title>
+  <style>
+    body{{margin:16px; line-height:1.7; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,\\5FAE\\8F6F\\96C5\\9ED1,sans-serif}}
+    img{{max-width:100%; height:auto}}
+    pre,code{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}}
+    blockquote{{border-left:4px solid #ddd; padding-left:12px; color:#555}}
+  </style>
+</head>
+<body>
+{body_html}
+</body>
+</html>"""
+
 
 def download(url: str) -> str:
     r = S.get(url, timeout=TIMEOUT)
     r.raise_for_status()
     return r.text
 
-def localize_images(content, folder: pathlib.Path):
+def localize_images(content, folder: pathlib.Path, referer_link: str = ""):
     imgdir = folder / "images"
     imgdir.mkdir(exist_ok=True)
     soup = BeautifulSoup(content, "html.parser")
     idx = 1
     for img in soup.find_all("img"):
         src = img.get("data-src") or img.get("src")
-        if not src or src.startswith("data:"): 
+        if not src or src.startswith("data:"):
             continue
         full = urljoin(BASE, src)
         try:
-            resp = S.get(full, timeout=TIMEOUT)
-            if not resp.ok or not resp.content: 
+            headers = {"Referer": referer_link} if referer_link else {}
+            resp = S.get(full, headers=headers, timeout=TIMEOUT)
+            if not resp.ok or not resp.content:
                 continue
             ext = ".jpg"
             m = re.search(r"wx_fmt=(\w+)", full)
@@ -148,6 +189,7 @@ def localize_images(content, folder: pathlib.Path):
         except Exception:
             continue
     return str(soup)
+
 
 def date_str_from_ts(ts: int) -> tuple[str, str]:
     """返回 (YYYY, YYYY-MM-DD)；微信时间戳为 UTC+8，本地用 time.localtime 即可"""
@@ -172,12 +214,15 @@ def save_article(title: str, link: str, ts: int):
     article_dir.mkdir(parents=True, exist_ok=True)
 
     # 图片本地化
-    localized = localize_images(str(content), article_dir)
+    localized = localize_images(str(content), article_dir, link)
 
-    # 文件名要求：YYYY-MM-DD_<标题>.html
-    (article_dir / f"{base_name}.html").write_text(localized, "utf-8")
-    # 其它照常：article.md / images / meta.json
-    (article_dir / "article.md").write_text(html_to_md(localized), "utf-8")
+    # 生成完整 HTML（可直接双击打开）
+    full_html = wrap_full_html(localized, safe_title)
+
+    # 文件名要求：YYYY-MM-DD_<标题>.html / .md
+    (article_dir / f"{base_name}.html").write_text(full_html, "utf-8")
+    (article_dir / f"{base_name}.md").write_text(html_to_md(localized), "utf-8")
+
     meta = {"title": title, "url": link, "publish_time": ts, "year": year, "date": ymd}
     (article_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), "utf-8")
 
