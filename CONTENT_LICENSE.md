@@ -2,6 +2,8 @@
 
 本项目中的**内容**（包括但不限于文档、图片、示例等）采用 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/) 进行许可。
 
+> 💡 **特别说明**：本项目专为《文不加点的张衔瑜》个人公众号设计，内容许可证主要适用于项目文档和说明材料。
+
 ## 您可以自由地：
 
 - **分享** - 以任何媒介或格式复制及分发本材料
