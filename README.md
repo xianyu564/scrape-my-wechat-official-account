@@ -206,58 +206,16 @@ python3 script/wx_publish_backup.py
 pip install -r requirements.txt
 ```
 
-或者手动安装：
+> 说明：依赖详解见 `requirements.txt`。
 
-```bash
-pip install requests beautifulsoup4 lxml
-```
+## ⚙️ 配置说明（简版）
 
-## ⚙️ 配置说明
+1. 复制 `env.json.EXAMPLE` 为 `env.json`
+2. 最少填写：`WECHAT_ACCOUNT_NAME`、`COOKIE`、`TOKEN`
+3. 可选调整：`COUNT`、`SLEEP_LIST`、`SLEEP_ART` 等速率参数
 
-### 基础配置步骤
-
-1. **复制配置文件**：复制 `env.json.EXAMPLE` 为 `env.json`
-  * 🔐 安全：env.json 已加入 .gitignore，请勿提交。Cookie 常含 HttpOnly 字段，不会出现在 document.cookie，需在 DevTools/Network 里从真实请求复制。
-  *⚠️ 有效期：Cookie/Token 有时效，失效时重登后台并重新复制。
-2. **填写配置信息**：根据你的公众号信息填写相应字段
-
-### 配置文件详解
-
-```json
-{
-  "WECHAT_APPID": "你的微信公众号APPID", //其实不重要，这是上一个项目的遗留，属于公众号开发接口
-  "WECHAT_APPSECRET": "你的微信公众号APPSECRET",  // 同上
-  "WECHAT_ACCOUNT_NAME": "你的微信公众号名称", //为了命名的，可以是任意名字，不非得跟公众号相同
-  "COOKIE": "从浏览器复制的Cookie",
-  "TOKEN": "从发表记录页URL获取的token",
-  "COUNT": "20",
-  "SLEEP_LIST": "0.6",
-  "SLEEP_ART": "0.3"
-}
-```
-
-### 🔑 获取Cookie和Token的详细步骤
-
-#### 1. 获取Cookie
-就像获取通行证一样，Cookie是你访问微信公众平台的凭证：
-
-1. **登录微信公众平台**：访问 https://mp.weixin.qq.com
-2. **进入内容管理**：点击"内容与互动" → "历史消息"
-3. **打开开发者工具**：按F12键，切换到Network标签
-4. **复制Cookie**：找到 `appmsg?action=list_ex...` 请求，复制完整的Cookie
-
-#### 2. 获取Token
-Token就像是时间的钥匙，让你能够访问特定时间段的文章：
-
-1. **查看发表记录**：在历史消息页面，查看URL地址
-2. **提取Token参数**：从URL中找到 `token=` 后面的参数值
-3. **复制到配置文件**：将完整的token值复制到 `env.json` 文件中
-
-### ⚠️ 重要提醒
-
-- **Cookie有效期**：Cookie会定期过期，需要及时更新
-- **Token唯一性**：每个时间段的Token都是唯一的
-- **信息安全**：请妥善保管这些敏感信息，不要泄露给他人
+> 详细的 Cookie/Token 获取操作与截图：见 `script/README.md` 的“获取 Cookie 与 Token（简版）”。
+> 完整参数说明与最佳实践：见 `docs/TROUBLESHOOTING.md` 与 `script/README.md`。
 
 ## 💻 使用方法
 
@@ -340,17 +298,11 @@ Wechat-Backup/<微信公众号名称>/
 
 > 💡 **了解更多**：详细的项目展望请查看 [STATUS.md](STATUS.md#-项目展望)
 
-## 🔧 故障排除
+## 🔧 故障排除（更多见文档）
 
-如果您在使用过程中遇到问题，请查看 [故障排除指南](docs/TROUBLESHOOTING.md) 获取详细的解决方案。
-
-### 常见问题快速解决
-
-- **预检失败**：重新获取Cookie和Token
-- **配置文件错误**：检查env.json文件位置和格式
-- **网络连接问题**：调整请求间隔或使用代理
-- **图片下载失败**：检查网络权限和磁盘空间
-- **文件权限问题**：检查目录权限和磁盘空间
+遇到“预检失败/403、空白HTML、限速、断点续传”等问题，请参考：
+- `docs/TROUBLESHOOTING.md`（完整指南）
+- `script/README.md`（平台命令对照与错误恢复速查）
 
 ## 📞 获取帮助
 
