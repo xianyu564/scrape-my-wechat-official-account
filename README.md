@@ -300,6 +300,23 @@ Wechat-Backup/<微信公众号名称>/
 >
 > 🧭 同时建议阅读研究计划：[FUTURE_VISION.md](docs/FUTURE_VISION.md)。该计划以“先获得感（词频/年度/主题）→ 认知与成长挖掘（人物/地点/情绪/价值观）→ 语义检索/RAG → 个性化模型”的顺序推进，并强调“自反式个人社会现场研究”和“兴趣导向的任务编排”。
 
+## 💝 赞助与支持
+
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin: 18px 0;">
+  <div style="text-align: center;">
+    <img src=".github/assets/sponsor-qr-code/WeChat%20Sponsor%20Code.jpg" alt="WeChat Sponsor Code" width="220" />
+    <div style="margin-top: 8px; color: #666;">个人 微信赞助</div>
+  </div>
+  <div style="text-align: center;">
+    <img src=".github/assets/sponsor-qr-code/SG%20PayNow%20Sponsor%20Code.jpg" alt="SG PayNow Sponsor Code" width="220" />
+    <div style="margin-top: 8px; color: #666;">个人 新加坡 PayNow</div>
+  </div>
+  <div style="text-align: center;">
+    <img src=".github/assets/sponsor-qr-code/Start-up%20Company%20Code.PNG" alt="Start-up Company Sponsor Code" width="220" />
+    <div style="margin-top: 8px; color: #666;">我创业的公司 赞助码</div>
+  </div>
+</div>
+
 ## 🔧 故障排除（更多见文档）
 
 遇到“预检失败/403、空白HTML、限速、断点续传”等问题，请参考：
