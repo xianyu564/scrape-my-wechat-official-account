@@ -52,8 +52,8 @@
   - 文档：`script/README.md`、`docs/TROUBLESHOOTING.md`
 - **已备份语料（可直接阅读/研究/再训练）**：
   - 主目录：`Wechat-Backup/文不加点的张衔瑜/`
-  - 目录索引：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
-  - 主题合集（进行中）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
+  - 编年目录：`Wechat-Backup/文不加点的张衔瑜/目录.md`（按时间顺序）
+  - 主题合集：`Wechat-Backup/文不加点的张衔瑜/合集.md`（按主题分类）
 
 ## 💭 项目动机
 
@@ -281,14 +281,14 @@ Wechat-Backup/<微信公众号名称>/
 ### 数据指引（本仓库已含示例语料）
 
 - 主目录：`Wechat-Backup/文不加点的张衔瑜/`
-- 脚本目录（带统计）：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
-- 主题合集（暂无）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
+- 编年目录：`Wechat-Backup/文不加点的张衔瑜/目录.md`（按时间顺序浏览）
+- 主题合集：`Wechat-Backup/文不加点的张衔瑜/合集.md`（按主题分类浏览）
 
-> 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。脚本目录会给出年度字数/图片合计与全局编号，以便横向研究。
+> 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。编年目录提供年度字数/图片合计与全局编号；主题合集按年份与类别重新组织，便于主题式阅读。
 
 ## 🧪 二次利用：语料再分析与 AI 再训练
 
-- 从这里开始：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`（定位文章与年份统计）
+- 从这里开始：`Wechat-Backup/文不加点的张衔瑜/目录.md`（编年浏览）或 `合集.md`（主题浏览）
 - 研究路线建议：见 `docs/FUTURE_VISION.md`（“先获得感 → 认知/成长挖掘 → 语义检索/RAG → 个性化模型”）
 - 管理与进展：见 `STATUS.md`（阶段性目标与完成度）
 
