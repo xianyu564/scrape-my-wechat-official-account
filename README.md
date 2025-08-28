@@ -53,7 +53,7 @@
 - **已备份语料（可直接阅读/研究/再训练）**：
   - 主目录：[`Wechat-Backup/文不加点的张衔瑜/`](Wechat-Backup/文不加点的张衔瑜/)
   - 编年目录：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)（按时间顺序）
-  - 主题合集：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（按主题分类，含摄影专题）
+  - 主题合集：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（按主题分类）
 
 ## 💭 项目动机
 
