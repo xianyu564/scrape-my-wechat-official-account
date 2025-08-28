@@ -26,9 +26,9 @@
 
 ### 🔗 快速链接（内容直达）
 
-- 文章总目录（脚本生成，含年度字数/图片合计、全局编号）：`Wechat-Backup/文不加点的张衔瑜/目录.auto.md`
-- 主题合集（尚未完成）：`Wechat-Backup/文不加点的张衔瑜/合集.md`
-- 语料主目录（含全部文章的 HTML/MD/images/meta）：`Wechat-Backup/文不加点的张衔瑜/`
+- **文章总目录**（编年排序，含年度字数/图片合计、全局编号）：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)
+- **主题合集**（按主题分类，含摄影专题和格式规范）：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)
+- **语料主目录**（含全部文章的 HTML/MD/images/meta）：[`Wechat-Backup/文不加点的张衔瑜/`](Wechat-Backup/文不加点的张衔瑜/)
 
 <div align="center" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   <p style="margin: 0; font-size: 1.1em; color: #333;">
@@ -51,9 +51,9 @@
   - 配置示例：`env.json.EXAMPLE`（复制为 `env.json` 后填写）
   - 文档：`script/README.md`、`docs/TROUBLESHOOTING.md`
 - **已备份语料（可直接阅读/研究/再训练）**：
-  - 主目录：`Wechat-Backup/文不加点的张衔瑜/`
-  - 编年目录：`Wechat-Backup/文不加点的张衔瑜/目录.md`（按时间顺序）
-  - 主题合集：`Wechat-Backup/文不加点的张衔瑜/合集.md`（按主题分类）
+  - 主目录：[`Wechat-Backup/文不加点的张衔瑜/`](Wechat-Backup/文不加点的张衔瑜/)
+  - 编年目录：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)（按时间顺序）
+  - 主题合集：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（按主题分类，含摄影专题）
 
 ## 💭 项目动机
 
@@ -280,15 +280,15 @@ Wechat-Backup/<微信公众号名称>/
 
 ### 数据指引（本仓库已含示例语料）
 
-- 主目录：`Wechat-Backup/文不加点的张衔瑜/`
-- 编年目录：`Wechat-Backup/文不加点的张衔瑜/目录.md`（按时间顺序浏览）
-- 主题合集：`Wechat-Backup/文不加点的张衔瑜/合集.md`（按主题分类浏览）
+- **主目录**：[`Wechat-Backup/文不加点的张衔瑜/`](Wechat-Backup/文不加点的张衔瑜/)
+- **编年目录**：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)（按时间顺序浏览）
+- **主题合集**：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（按主题分类浏览，含摄影专题）
 
-> 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。编年目录提供年度字数/图片合计与全局编号；主题合集按年份与类别重新组织，便于主题式阅读。
+> 每篇文章目录包含：`*.html`、`*.md`、`meta.json`、`images/`。编年目录提供年度字数/图片合计与全局编号；主题合集按年份与类别重新组织，便于主题式阅读，特别新增摄影专题涵盖技法、器材、视觉叙事等维度。
 
 ## 🧪 二次利用：语料再分析与 AI 再训练
 
-- 从这里开始：`Wechat-Backup/文不加点的张衔瑜/目录.md`（编年浏览）或 `合集.md`（主题浏览）
+- 从这里开始：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)（编年浏览）或 [`合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（主题浏览，含摄影专题）
 - 研究路线建议：见 `docs/FUTURE_VISION.md`（“先获得感 → 认知/成长挖掘 → 语义检索/RAG → 个性化模型”）
 - 管理与进展：见 `STATUS.md`（阶段性目标与完成度）
 
