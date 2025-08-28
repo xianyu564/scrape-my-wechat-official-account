@@ -27,7 +27,7 @@
 ### 🔗 快速链接（内容直达）
 
 - **文章总目录**（编年排序，含年度字数/图片合计、全局编号）：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)
-- **主题合集**（按主题分类，含摄影专题和格式规范）：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)
+- **主题合集**（按主题分类，含专题下的文章详情和格式规范）：[`Wechat-Backup/文不加点的张衔瑜/合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)
 - **语料主目录**（含全部文章的 HTML/MD/images/meta）：[`Wechat-Backup/文不加点的张衔瑜/`](Wechat-Backup/文不加点的张衔瑜/)
 
 <div align="center" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
