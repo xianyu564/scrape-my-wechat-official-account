@@ -116,15 +116,28 @@ def build_ngrams(tokens: List[str],
         if count > 0:
             detected_lengths.append(n)
     
-    # Validation: check coverage
+    # Validation: check coverage and provide helpful hints
     expected_lengths = list(range(1, max_n + 1))
     missing_lengths = [n for n in expected_lengths if ngram_counts_by_length.get(n, 0) == 0]
     
-    if missing_lengths and max(missing_lengths) <= 3:  # Only warn for basic n-grams
-        print(f"⚠️  Missing n-gram lengths: {missing_lengths} (consider lowering min_freq={min_freq})")
+    # Provide detailed missing length information
+    if missing_lengths:
+        if max(missing_lengths) <= 3:  # Critical basic n-grams missing
+            print(f"⚠️  Missing n-gram lengths: {missing_lengths}")
+            if 2 in missing_lengths:
+                print(f"   💡 Hint: No bigrams detected. Try lowering min_freq from {min_freq} to {max(1, min_freq//2)}")
+            if 3 in missing_lengths and 2 not in missing_lengths:
+                print(f"   💡 Hint: No trigrams detected. Try lowering {collocation}_threshold or min_freq")
+        elif len(missing_lengths) > max_n // 2:  # More than half missing
+            print(f"⚠️  Limited n-gram detection: {len(detected_lengths)}/{max_n} lengths detected")
+            print(f"   💡 Hint: Consider lowering min_freq from {min_freq} to {max(1, min_freq//2)} for better coverage")
     
-    print(f"✅ N-gram building complete: {len(merged_tokens)} tokens")
+    # Success message with coverage info
+    coverage_pct = (len(detected_lengths) / max_n) * 100
+    print(f"✅ N-gram building complete: {len(merged_tokens)} tokens ({coverage_pct:.0f}% length coverage)")
     print(f"   Detected n-gram lengths: {detected_lengths}")
+    if missing_lengths:
+        print(f"   Missing n-gram lengths: {missing_lengths}")
     
     return merged_tokens, ngram_counts_by_length
 
