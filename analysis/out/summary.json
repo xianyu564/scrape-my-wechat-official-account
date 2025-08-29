@@ -1,0 +1,47 @@
+{
+  "config": {
+    "execution": {
+      "run_analysis": false,
+      "run_visualization": false
+    },
+    "data_paths": {
+      "corpus_root": "../Wechat-Backup/文不加点的张衔瑜",
+      "output_dir": "out",
+      "stopwords_zh_path": "data/stopwords.zh.txt",
+      "stopwords_en_path": "data/stopwords.en.txt",
+      "allow_singletons_path": "data/allow_singletons.zh.txt"
+    },
+    "analysis": {
+      "max_n": 6,
+      "min_freq": 5,
+      "collocation": "llr",
+      "pmi_threshold": 3.0,
+      "llr_threshold": 10.83,
+      "tokenizer_type": "auto"
+    },
+    "tfidf": {
+      "min_df": 1,
+      "max_df": 0.98,
+      "topk": 150
+    },
+    "time_filtering": {
+      "start_date": null,
+      "end_date": null,
+      "years": null
+    },
+    "visualization": {
+      "generate_wordclouds": true,
+      "generate_scientific_plots": true,
+      "generate_report": true,
+      "wordcloud_max_words": 200,
+      "yearly_wordcloud_max_words": 100,
+      "font_path": null,
+      "color_scheme": "nature",
+      "yearly_comparison_top_n": 20,
+      "growth_chart_top_n": 20
+    },
+    "reproducibility": {
+      "seed": 42
+    }
+  }
+}
