@@ -58,9 +58,7 @@ class ChineseTokenizer:
         
         # Configure jieba for precise mode
         try:
-            jieba.enable_paddle()  # Use paddle mode for better accuracy
-            print("✅ Enabled Paddle precise tokenization mode")
-        except:
+        except Exception:
             # Fallback to default mode if paddle is not available
             warnings.warn("Paddle mode unavailable, using default tokenization mode")
             pass
