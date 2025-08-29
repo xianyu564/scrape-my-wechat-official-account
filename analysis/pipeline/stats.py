@@ -11,6 +11,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from typing import List, Dict, Tuple, Counter as CounterType, Any, Optional
 from collections import Counter
 import warnings
+from concurrent.futures import ProcessPoolExecutor
+from functools import lru_cache
+import time
+from tqdm import tqdm
 
 
 def calculate_frequencies(corpus_tokens: List[List[str]]) -> Counter:
@@ -58,7 +62,7 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
                    max_features: Optional[int] = None,
                    topk: int = 100) -> pd.DataFrame:
     """
-    Calculate TF-IDF scores using scikit-learn with pre-tokenized input
+    Calculate TF-IDF scores using scikit-learn with pre-tokenized input and progress tracking
     Properly handles pre-tokenized data by bypassing sklearn's default preprocessing
     
     Args:
@@ -95,20 +99,31 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
             return []
     
     try:
-        for year, texts in texts_by_year.items():
+        # Add progress tracking for years
+        years = list(texts_by_year.keys())
+        for year in tqdm(years, desc="Processing years for TF-IDF"):
+            texts = texts_by_year[year]
             if not texts:
                 continue
                 
             try:
-                # Pre-tokenize all texts for this year
+                # Pre-tokenize all texts for this year with progress
+                print(f"   📝 Tokenizing {len(texts)} documents for {year}...")
                 tokenized_texts = []
-                for text in texts:
+                
+                # Use tqdm for tokenization if there are many texts
+                text_iterator = tqdm(texts, desc=f"Tokenizing {year}", 
+                                   disable=len(texts) < 50, leave=False)
+                
+                for text in text_iterator:
                     tokens = tokenizer_func(text)
                     if tokens:  # Only include non-empty tokenizations
                         tokenized_texts.append(tokens)
                 
                 if not tokenized_texts:
                     continue
+                
+                print(f"   🔢 Computing TF-IDF for {len(tokenized_texts)} documents...")
                 
                 # Create TF-IDF vectorizer with custom functions to avoid preprocessing issues
                 vectorizer = TfidfVectorizer(
@@ -206,10 +221,9 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
             'content_function_ratio': 0.0, 'total_tokens': 0, 'unique_tokens': 0
         }
     
-    # Flatten tokens
-    all_tokens = []
-    for tokens in corpus_tokens:
-        all_tokens.extend(tokens)
+    # Flatten tokens efficiently using itertools
+    from itertools import chain
+    all_tokens = list(chain.from_iterable(corpus_tokens))
     
     if not all_tokens:
         return {
@@ -232,8 +246,8 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
     else:
         maas_ttr = 0.0
     
-    # Lexical density: content words / total words
-    # Separate content words from function words using stopwords
+    # Optimized lexical density calculation
+    # Combine stopwords into a single set for faster lookup
     stopwords = set()
     if stopwords_zh:
         stopwords.update(stopwords_zh)
@@ -241,11 +255,18 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
         stopwords.update(stopwords_en)
     
     if stopwords:
-        content_words = [token for token in all_tokens if token.lower() not in stopwords and token not in stopwords]
-        function_words = [token for token in all_tokens if token.lower() in stopwords or token in stopwords]
+        # Count content and function words in a single pass
+        content_word_count = 0
+        function_word_count = 0
         
-        lexical_density = len(content_words) / total_tokens if total_tokens > 0 else 0.0
-        content_function_ratio = len(content_words) / len(function_words) if function_words else float('inf')
+        for token in all_tokens:
+            if token.lower() in stopwords or token in stopwords:
+                function_word_count += 1
+            else:
+                content_word_count += 1
+        
+        lexical_density = content_word_count / total_tokens if total_tokens > 0 else 0.0
+        content_function_ratio = content_word_count / function_word_count if function_word_count > 0 else float('inf')
     else:
         # If no stopwords provided, assume all words are content words
         lexical_density = 1.0
@@ -428,7 +449,7 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
 def _bootstrap_heaps_confidence(log_n: np.ndarray, log_V: np.ndarray, 
                                n_bootstrap: int = 100, confidence_level: float = 0.95) -> Tuple[float, float]:
     """
-    Bootstrap confidence interval for Heaps law parameters
+    Bootstrap confidence interval for Heaps law parameters with parallel processing
     
     Args:
         log_n: Log corpus sizes
@@ -441,21 +462,54 @@ def _bootstrap_heaps_confidence(log_n: np.ndarray, log_V: np.ndarray,
     """
     if len(log_n) < 3:
         return 0.0, 0.0
-        
-    np.random.seed(42)  # For reproducibility
-    bootstrap_betas = []
     
-    for _ in range(n_bootstrap):
-        # Resample with replacement
+    def _single_bootstrap_sample(seed: int) -> Optional[float]:
+        """Single bootstrap sample calculation"""
+        np.random.seed(seed)
         indices = np.random.choice(len(log_n), size=len(log_n), replace=True)
         boot_log_n = log_n[indices]
         boot_log_V = log_V[indices]
         
         try:
             beta, _, _, _, _ = stats.linregress(boot_log_n, boot_log_V)
-            bootstrap_betas.append(beta)
+            return beta
         except:
-            continue
+            return None
+    
+    # Use parallel processing for large bootstrap samples
+    if n_bootstrap > 50:
+        # Use ProcessPoolExecutor for CPU-bound bootstrap calculations
+        with ProcessPoolExecutor(max_workers=min(4, n_bootstrap // 10)) as executor:
+            seeds = range(42, 42 + n_bootstrap)  # Deterministic seeds for reproducibility
+            
+            # Submit all tasks
+            futures = [executor.submit(_single_bootstrap_sample, seed) for seed in seeds]
+            
+            # Collect results with progress bar
+            bootstrap_betas = []
+            for future in tqdm(futures, desc="Bootstrap sampling", disable=n_bootstrap < 200):
+                try:
+                    result = future.result(timeout=1.0)  # 1 second timeout per sample
+                    if result is not None:
+                        bootstrap_betas.append(result)
+                except:
+                    continue
+    else:
+        # Sequential processing for small bootstrap samples
+        np.random.seed(42)  # For reproducibility
+        bootstrap_betas = []
+        
+        for i in range(n_bootstrap):
+            # Resample with replacement
+            indices = np.random.choice(len(log_n), size=len(log_n), replace=True)
+            boot_log_n = log_n[indices]
+            boot_log_V = log_V[indices]
+            
+            try:
+                beta, _, _, _, _ = stats.linregress(boot_log_n, boot_log_V)
+                bootstrap_betas.append(beta)
+            except:
+                continue
     
     if not bootstrap_betas:
         return 0.0, 0.0

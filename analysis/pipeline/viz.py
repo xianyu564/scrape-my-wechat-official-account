@@ -12,6 +12,9 @@ from wordcloud import WordCloud
 from typing import Dict, List, Counter as CounterType, Optional, Any
 from collections import Counter
 import warnings
+from functools import lru_cache
+import time
+from pathlib import Path
 
 # Set up matplotlib for Chinese font support
 plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Liberation Sans']
@@ -27,9 +30,65 @@ COLOR_SCHEMES = {
 }
 
 
+@lru_cache(maxsize=4)
+def _find_system_chinese_fonts() -> List[str]:
+    """
+    Cache-optimized system Chinese font detection
+    
+    Returns:
+        List[str]: Available Chinese font paths
+    """
+    print("🔍 Scanning system fonts for Chinese support...")
+    
+    # Common Chinese font names to search for
+    chinese_font_names = [
+        'SimHei', 'SimSun', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
+        'STHeiti', 'STSong', 'Source Han Sans', 'Noto Sans CJK', 'WenQuanYi',
+        'AR PL UMing', 'AR PL UKai', 'Liberation Sans', 'DejaVu Sans'
+    ]
+    
+    # System font directories to search
+    font_dirs = [
+        '/System/Library/Fonts',  # macOS
+        '/usr/share/fonts',       # Linux
+        '/usr/local/share/fonts', # Linux (user)
+        '/Library/Fonts',         # macOS (user)
+        'C:/Windows/Fonts',       # Windows
+        '/opt/homebrew/share/fonts',  # macOS (Homebrew)
+        '~/.fonts',               # Linux (user)
+    ]
+    
+    found_fonts = []
+    
+    # Search system font directories
+    for font_dir in font_dirs:
+        font_path = Path(font_dir).expanduser()
+        if font_path.exists():
+            for font_file in font_path.rglob('*.ttf'):
+                if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
+                    found_fonts.append(str(font_file))
+            for font_file in font_path.rglob('*.otf'):
+                if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
+                    found_fonts.append(str(font_file))
+    
+    # Also check matplotlib's font cache
+    try:
+        for font in font_manager.fontManager.ttflist:
+            font_name = font.name.lower()
+            if any(chinese_name.lower() in font_name for chinese_name in chinese_font_names):
+                if font.fname not in found_fonts:
+                    found_fonts.append(font.fname)
+    except:
+        pass
+    
+    print(f"✅ Found {len(found_fonts)} potential Chinese fonts")
+    return found_fonts[:10]  # Return top 10 candidates
+
+
+@lru_cache(maxsize=2)
 def setup_chinese_font(font_path: Optional[str] = None) -> str:
     """
-    Setup Chinese font for matplotlib and wordcloud with comprehensive auto-detection
+    Setup Chinese font for matplotlib and wordcloud with comprehensive auto-detection and caching
     
     Args:
         font_path: Path to Chinese font file
@@ -46,7 +105,26 @@ def setup_chinese_font(font_path: Optional[str] = None) -> str:
         except Exception as e:
             warnings.warn(f"Failed to load custom font {font_path}: {e}")
     
-    # First, try to find fonts using matplotlib's font manager
+    # First, try to find fonts using cached font detection
+    try:
+        font_candidates = _find_system_chinese_fonts()
+        
+        for font_file in font_candidates:
+            try:
+                # Test if font can be loaded
+                font_prop = font_manager.FontProperties(fname=font_file)
+                plt.rcParams['font.family'] = font_prop.get_name()
+                print(f"✅ Using Chinese font file: {font_file}")
+                return font_file
+            except Exception:
+                continue
+                
+    except Exception as e:
+        warnings.warn(f"Font detection failed: {e}")
+    
+    # Fallback to matplotlib's default handling
+    print("⚠️  Using system default font (Chinese characters may not display properly)")
+    return ""
     try:
         # Check for installed fonts that support Chinese
         chinese_font_families = [

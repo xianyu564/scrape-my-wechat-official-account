@@ -31,6 +31,11 @@ from viz import (
     create_yearly_comparison_chart, create_growth_chart, COLOR_SCHEMES
 )
 from report import write_report
+from performance import profiler, optimize_memory, benchmark_function
+from advanced_analysis import (
+    calculate_advanced_metrics, calculate_complexity_metrics,
+    export_analysis_results, validate_analysis_config, generate_analysis_report
+)
 
 
 def print_and_save_config(config: Dict[str, Any], output_dir: str, 
@@ -159,6 +164,23 @@ Examples:
                        help='Path to Chinese font file')
     parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm', 'muted', 'solar'],
                        help='Color scheme for visualizations (default: nature)')
+    
+    # Performance and export options
+    parser.add_argument('--export-format', choices=['json', 'csv', 'excel', 'all'], 
+                       default='all',
+                       help='Export format for results (default: all)')
+    parser.add_argument('--profile', action='store_true',
+                       help='Enable detailed performance profiling')
+    parser.add_argument('--bootstrap-samples', type=int, default=100,
+                       help='Number of bootstrap samples for confidence intervals (default: 100)')
+    parser.add_argument('--parallel', action='store_true',
+                       help='Enable parallel processing where available')
+    
+    # Advanced analysis options
+    parser.add_argument('--advanced-metrics', action='store_true',
+                       help='Calculate advanced linguistic metrics')
+    parser.add_argument('--complexity-analysis', action='store_true',
+                       help='Include syntactic complexity analysis')
     
     # Reproducibility
     parser.add_argument('--seed', type=int,
@@ -671,8 +693,39 @@ def main():
     print_and_save_config(config, OUTPUT_DIR)
     
     # =================================================================
-    # 🚀 EXECUTION
+    # ✅ CONFIGURATION VALIDATION
     # =================================================================
+    
+    print("\n🔍 Validating configuration...")
+    config_flat = {
+        'corpus_path': CORPUS_ROOT,
+        'output_dir': OUTPUT_DIR,
+        'min_df': TFIDF_MIN_DF,
+        'max_df': TFIDF_MAX_DF,
+        'topk': TFIDF_TOPK,
+        'color_scheme': COLOR_SCHEME,
+        'years': YEARS
+    }
+    
+    is_valid, errors = validate_analysis_config(config_flat)
+    if not is_valid:
+        print("❌ Configuration validation failed:")
+        for error in errors:
+            print(f"   • {error}")
+        return 1
+    else:
+        print("✅ Configuration validation passed")
+    
+    # =================================================================
+    # 🚀 EXECUTION WITH PERFORMANCE MONITORING
+    # =================================================================
+    
+    # Initialize performance profiler
+    profiler.clear()
+    print("\n📊 Performance monitoring enabled")
+    
+    # Memory optimization before starting
+    optimize_memory()
     
     try:
         # Phase 1: Analysis
@@ -726,6 +779,36 @@ def main():
         
         print("\n🎉 ANALYSIS COMPLETE!")
         print("=" * 70)
+        
+        # Performance summary
+        profiler.print_summary()
+        
+        # Export results in multiple formats if requested
+        if RUN_ANALYSIS:
+            print("\n📤 Exporting analysis results...")
+            summary_path = os.path.join(OUTPUT_DIR, "summary.json")
+            if os.path.exists(summary_path):
+                with open(summary_path, 'r', encoding='utf-8') as f:
+                    results_data = json.load(f)
+                
+                # Export in multiple formats
+                export_files = export_analysis_results(
+                    results_data, 
+                    OUTPUT_DIR, 
+                    format='all'  # JSON, CSV, and Excel
+                )
+                
+                # Generate comprehensive text report
+                print("\n📋 Generating comprehensive report...")
+                text_report = generate_analysis_report(results_data, config)
+                
+                report_path = os.path.join(OUTPUT_DIR, "comprehensive_report.txt")
+                with open(report_path, 'w', encoding='utf-8') as f:
+                    f.write(text_report)
+                print(f"✅ Comprehensive report saved: {report_path}")
+        
+        # Final memory cleanup
+        optimize_memory()
         
         if RUN_ANALYSIS and not RUN_VISUALIZATION:
             print("💡 Tip: Set --visualization to generate visuals")
