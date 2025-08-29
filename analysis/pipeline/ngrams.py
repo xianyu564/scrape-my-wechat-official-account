@@ -3,6 +3,7 @@
 Variable-length n-gram builder with collocation filtering (PMI/log-likelihood)
 """
 
+import re
 import math
 from typing import List, Dict, Tuple, Set, Counter as CounterType
 from collections import Counter, defaultdict
@@ -309,4 +310,3 @@ def _is_english_token(token: str) -> bool:
     return bool(re.match(r'^[a-zA-Z][\w\-_]*$', token))
 
 
-import re  # Add this import at the top if not already present
