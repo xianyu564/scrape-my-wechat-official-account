@@ -1,0 +1,288 @@
+"""
+中文分词与文本清洗模块
+"""
+
+import os
+import re
+import pickle
+import hashlib
+from pathlib import Path
+from typing import List, Set, Optional, Tuple
+import warnings
+
+import jieba
+import jieba.analyse
+from tqdm import tqdm
+
+
+class ChineseTokenizer:
+    """中文分词器"""
+    
+    def __init__(self, userdict_path: Optional[str] = None, 
+                 stopwords_path: Optional[str] = None,
+                 extra_stopwords: Optional[List[str]] = None,
+                 cache_dir: str = "analysis/.cache"):
+        """
+        初始化分词器
+        
+        Args:
+            userdict_path: 用户词典路径
+            stopwords_path: 停用词文件路径  
+            extra_stopwords: 额外停用词列表
+            cache_dir: 缓存目录
+        """
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+        
+        # 加载用户词典
+        if userdict_path and os.path.exists(userdict_path):
+            jieba.load_userdict(userdict_path)
+            print(f"已加载用户词典: {userdict_path}")
+        
+        # 加载停用词
+        self.stopwords = self._load_stopwords(stopwords_path, extra_stopwords)
+        print(f"已加载停用词: {len(self.stopwords)} 个")
+        
+        # 设置 jieba 为精确模式
+        try:
+            jieba.enable_paddle()  # 使用 paddle 模式提高准确率
+        except:
+            # 如果 paddle 不可用，使用默认模式
+            warnings.warn("Paddle 模式不可用，使用默认分词模式")
+            pass
+        
+    def _load_stopwords(self, stopwords_path: Optional[str], 
+                       extra_stopwords: Optional[List[str]]) -> Set[str]:
+        """加载停用词"""
+        stopwords = set()
+        
+        # 从文件加载
+        if stopwords_path and os.path.exists(stopwords_path):
+            try:
+                with open(stopwords_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        word = line.strip()
+                        if word:
+                            stopwords.add(word)
+            except Exception as e:
+                warnings.warn(f"加载停用词文件失败: {e}")
+        
+        # 添加额外停用词
+        if extra_stopwords:
+            stopwords.update(extra_stopwords)
+        
+        # 添加默认停用词
+        default_stopwords = {
+            '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', 
+            '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', 
+            '你', '会', '着', '没有', '看', '好', '自己', '这', '那', '这个',
+            '那个', '什么', '怎么', '为什么', '可以', '能够', '应该', '需要',
+            '但是', '如果', '因为', '所以', '然后', '还是', '或者', '已经',
+            '正在', '可能', '应该', '必须', '当然', '确实', '其实', '特别',
+            '非常', '比较', '更加', '最好', '最大', '最小', '第一', '第二',
+            '等等', '之类', '以及', '以上', '以下', '之后', '之前', '同时',
+            '另外', '此外', '而且', '并且', '或许', '大概', '可能', '似乎'
+        }
+        stopwords.update(default_stopwords)
+        
+        return stopwords
+    
+    def tokenize(self, text: str, chinese_only: bool = True, 
+                 ngram_max: int = 1) -> List[str]:
+        """
+        对文本进行分词
+        
+        Args:
+            text: 输入文本
+            chinese_only: 是否只保留中文
+            ngram_max: 最大 n-gram 长度
+        
+        Returns:
+            List[str]: 分词结果
+        """
+        if not text:
+            return []
+        
+        # 检查缓存
+        cache_key = self._get_cache_key(text, chinese_only, ngram_max)
+        cached_result = self._load_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+        
+        # 预处理
+        text = self._preprocess_text(text)
+        
+        # jieba 分词
+        words = jieba.lcut(text, cut_all=False)
+        
+        # 过滤和清洗
+        tokens = []
+        for word in words:
+            word = word.strip()
+            if not word:
+                continue
+                
+            # 中文过滤
+            if chinese_only and not self._is_chinese(word):
+                continue
+            
+            # 停用词过滤
+            if word in self.stopwords:
+                continue
+            
+            # 长度过滤
+            if len(word) < 2:
+                continue
+                
+            tokens.append(word)
+        
+        # 生成 n-gram
+        if ngram_max > 1:
+            tokens = self._generate_ngrams(tokens, ngram_max)
+        
+        # 缓存结果
+        self._save_cache(cache_key, tokens)
+        
+        return tokens
+    
+    def tokenize_batch(self, texts: List[str], chinese_only: bool = True,
+                      ngram_max: int = 1, show_progress: bool = True) -> List[List[str]]:
+        """
+        批量分词
+        
+        Args:
+            texts: 文本列表
+            chinese_only: 是否只保留中文
+            ngram_max: 最大 n-gram 长度
+            show_progress: 是否显示进度条
+        
+        Returns:
+            List[List[str]]: 分词结果列表
+        """
+        results = []
+        
+        if show_progress:
+            texts = tqdm(texts, desc="分词处理")
+        
+        for text in texts:
+            tokens = self.tokenize(text, chinese_only, ngram_max)
+            results.append(tokens)
+        
+        return results
+    
+    def extract_keywords(self, text: str, topk: int = 20, 
+                        method: str = "tfidf") -> List[Tuple[str, float]]:
+        """
+        提取关键词
+        
+        Args:
+            text: 输入文本
+            topk: 返回关键词数量
+            method: 提取方法，'tfidf' 或 'textrank'
+        
+        Returns:
+            List[Tuple[str, float]]: (关键词, 权重) 列表
+        """
+        if method == "tfidf":
+            keywords = jieba.analyse.extract_tags(text, topK=topk, withWeight=True)
+        elif method == "textrank":
+            keywords = jieba.analyse.textrank(text, topK=topk, withWeight=True)
+        else:
+            raise ValueError(f"不支持的方法: {method}")
+        
+        return keywords
+    
+    def _preprocess_text(self, text: str) -> str:
+        """文本预处理"""
+        # 移除HTML标签
+        text = re.sub(r'<[^>]+>', '', text)
+        # 移除URL
+        text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+        # 移除邮箱
+        text = re.sub(r'\S*@\S*\s?', '', text)
+        # 移除多余空白
+        text = re.sub(r'\s+', ' ', text)
+        # 移除数字和标点（可选）
+        # text = re.sub(r'[0-9\W]+', ' ', text)
+        
+        return text.strip()
+    
+    def _is_chinese(self, word: str) -> bool:
+        """判断是否为中文"""
+        return bool(re.search(r'[\u4e00-\u9fff]', word))
+    
+    def _generate_ngrams(self, tokens: List[str], max_n: int) -> List[str]:
+        """生成 n-gram"""
+        result = tokens.copy()
+        
+        for n in range(2, max_n + 1):
+            for i in range(len(tokens) - n + 1):
+                ngram = ''.join(tokens[i:i+n])
+                result.append(ngram)
+        
+        return result
+    
+    def _get_cache_key(self, text: str, chinese_only: bool, ngram_max: int) -> str:
+        """生成缓存键"""
+        content = f"{text}_{chinese_only}_{ngram_max}"
+        return hashlib.md5(content.encode('utf-8')).hexdigest()
+    
+    def _load_cache(self, cache_key: str) -> Optional[List[str]]:
+        """加载缓存"""
+        cache_file = self.cache_dir / f"{cache_key}.pkl"
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'rb') as f:
+                    return pickle.load(f)
+            except Exception:
+                pass
+        return None
+    
+    def _save_cache(self, cache_key: str, tokens: List[str]):
+        """保存缓存"""
+        cache_file = self.cache_dir / f"{cache_key}.pkl"
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump(tokens, f)
+        except Exception:
+            pass
+
+
+def create_default_stopwords(output_path: str = "analysis/assets/stopwords_zh.txt"):
+    """创建默认中文停用词文件"""
+    stopwords = [
+        # 常用虚词
+        '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个',
+        '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好',
+        '自己', '这', '那', '这个', '那个', '什么', '怎么', '为什么', '可以', '能够',
+        
+        # 连词介词  
+        '但是', '如果', '因为', '所以', '然后', '还是', '或者', '已经', '正在', '可能',
+        '应该', '必须', '当然', '确实', '其实', '特别', '非常', '比较', '更加',
+        
+        # 数词序词
+        '第一', '第二', '第三', '最好', '最大', '最小', '等等', '之类', '以及', '以上',
+        '以下', '之后', '之前', '同时', '另外', '此外', '而且', '并且', '或许', '大概',
+        '似乎', '可能', '肯定', '一定', '也许', '大约', '左右', '上下', '前后',
+        
+        # 语气词
+        '啊', '呀', '哦', '嗯', '哈', '呢', '吧', '吗', '么', '哟', '嘿', '哎',
+        
+        # 标点符号
+        '，', '。', '！', '？', '；', '：', '"', '"', ''', ''', '（', '）', '【', '】',
+        '《', '》', '〈', '〉', '——', '…', '、', '·'
+    ]
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        for word in stopwords:
+            f.write(word + '\n')
+    
+    print(f"默认停用词文件已创建: {output_path}")
+    return stopwords
+
+
+if __name__ == "__main__":
+    # 创建默认停用词文件
+    create_default_stopwords()
