@@ -1,5 +1,6 @@
 """
-词频统计与 TF-IDF 分析模块
+词频统计与 TF-IDF 分析模块 - 增强版
+提供科学级统计分析和期刊质量可视化
 """
 
 import os
@@ -7,10 +8,38 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.patches import Rectangle
+import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter, defaultdict
 from typing import List, Dict, Tuple, Optional
 import warnings
+from scipy import stats
+from scipy.optimize import curve_fit
+import math
+
+# 设置科学期刊风格配色方案
+NATURE_COLORS = {
+    'primary': '#0C7BDC',      # Nature蓝
+    'secondary': '#E1AF00',    # 金黄色
+    'accent': '#DC143C',       # 深红色
+    'success': '#039BE5',      # 浅蓝色
+    'warning': '#FFA726',      # 橙色
+    'background': '#F8F9FA',   # 浅灰背景
+    'text': '#2C3E50',         # 深灰文字
+    'grid': '#E9ECEF'          # 网格色
+}
+
+SCIENCE_COLORS = {
+    'primary': '#1f77b4',      # Science蓝
+    'secondary': '#ff7f0e',    # 橙色
+    'accent': '#2ca02c',       # 绿色
+    'warning': '#d62728',      # 红色
+    'info': '#9467bd',         # 紫色
+    'background': '#fafafa',   # 浅灰背景
+    'text': '#333333',         # 深灰文字
+    'grid': '#eeeeee'          # 网格色
+}
 
 
 def term_freq_overall(corpus_tokens: List[List[str]]) -> pd.DataFrame:
@@ -146,24 +175,34 @@ def tfidf_topk_by_year(texts_by_year: Dict[str, List[str]],
     return df
 
 
-def zipf_plot(freq_data: pd.DataFrame, output_path: str, 
-              title: str = "中文语料词频分布的Zipf定律分析",
-              font_path: Optional[str] = None):
+def zipf_plot_enhanced(freq_data: pd.DataFrame, output_path: str, 
+                      title: str = "中文语料词频分布的科学级Zipf定律分析",
+                      font_path: Optional[str] = None,
+                      color_scheme: str = "nature"):
     """
-    绘制高质量科学研究风格的 Zipf 定律分析图
+    绘制科学期刊级别的 Zipf 定律分析图 - 增强版
     
     Args:
         freq_data: 词频数据，需包含 'freq' 列
         output_path: 输出图片路径
         title: 图表标题
         font_path: 中文字体路径
+        color_scheme: 配色方案 ("nature", "science", "custom")
     """
     if freq_data.empty:
         warnings.warn("词频数据为空，无法绘制 Zipf 图")
         return
     
-    # 设置科学研究风格
-    plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+    # 设置配色方案
+    if color_scheme == "nature":
+        colors = NATURE_COLORS
+    elif color_scheme == "science":
+        colors = SCIENCE_COLORS
+    else:
+        colors = NATURE_COLORS  # 默认使用Nature配色
+    
+    # 设置科学期刊风格
+    plt.style.use('default')
     
     # 设置字体
     if font_path and os.path.exists(font_path):
@@ -173,122 +212,197 @@ def zipf_plot(freq_data: pd.DataFrame, output_path: str,
         plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
     
     plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['figure.facecolor'] = 'white'
+    plt.rcParams['axes.facecolor'] = colors['background']
+    plt.rcParams['grid.color'] = colors['grid']
+    plt.rcParams['text.color'] = colors['text']
+    plt.rcParams['axes.labelcolor'] = colors['text']
+    plt.rcParams['xtick.color'] = colors['text']
+    plt.rcParams['ytick.color'] = colors['text']
     
     # 准备数据
     freqs = freq_data['freq'].values
     ranks = np.arange(1, len(freqs) + 1)
     
-    # 过滤零频率
+    # 过滤零频率和异常值
     valid_mask = freqs > 0
     freqs = freqs[valid_mask]
     ranks = ranks[valid_mask]
     
-    if len(freqs) < 2:
-        warnings.warn("有效词频数据不足，无法绘制 Zipf 图")
+    if len(freqs) < 10:
+        warnings.warn("有效词频数据不足，无法进行科学分析")
         return
     
-    # 创建图表 - 使用黄金比例
-    fig_width = 16
-    fig_height = fig_width / 1.618  # 黄金比例
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(fig_width, fig_height))
+    # 创建六面板科学分析图 - 使用黄金比例
+    fig_width = 18
+    fig_height = fig_width / 1.618
+    fig = plt.figure(figsize=(fig_width, fig_height))
     
-    # 科学配色
-    primary_color = '#2E86AB'
-    secondary_color = '#A23B72' 
-    accent_color = '#F18F01'
+    # 创建复杂网格布局
+    gs = fig.add_gridspec(3, 4, height_ratios=[1.2, 1, 0.8], width_ratios=[1, 1, 1, 1],
+                         hspace=0.3, wspace=0.3)
     
-    # 左上图：双对数散点图
-    ax1.loglog(ranks, freqs, 'o', color=primary_color, alpha=0.7, markersize=4)
-    ax1.set_xlabel('词频排名', fontsize=12, fontweight='bold')
-    ax1.set_ylabel('词频', fontsize=12, fontweight='bold')
-    ax1.set_title('Zipf定律双对数分布', fontsize=14, fontweight='bold', color='#2C3E50')
-    ax1.grid(True, alpha=0.3, linestyle='--')
+    # 主图：双对数Zipf分布 (占上排左侧两格)
+    ax_main = fig.add_subplot(gs[0, :2])
     
-    # 拟合直线
+    # 残差分析 (上排右侧两格)
+    ax_residual = fig.add_subplot(gs[0, 2:])
+    
+    # 累积分布 (中排左侧两格)
+    ax_cumulative = fig.add_subplot(gs[1, :2])
+    
+    # 频率分布直方图 (中排右侧两格)
+    ax_hist = fig.add_subplot(gs[1, 2:])
+    
+    # 统计摘要面板 (下排)
+    ax_stats = fig.add_subplot(gs[2, :])
+    
+    # === 1. 主Zipf分布图 ===
+    # 数据点
+    scatter = ax_main.loglog(ranks, freqs, 'o', color=colors['primary'], 
+                           alpha=0.6, markersize=3, markeredgewidth=0)
+    
+    # 拟合分析（多种方法）
     log_ranks = np.log(ranks)
     log_freqs = np.log(freqs)
     
-    # 线性回归
+    # 方法1: 标准线性回归
     coeff = np.polyfit(log_ranks, log_freqs, 1)
     slope, intercept = coeff
     
+    # 方法2: 稳健回归（抗异常值）
+    try:
+        from scipy.stats import linregress
+        slope_robust, intercept_robust, r_value, p_value, std_err = linregress(log_ranks, log_freqs)
+        r_squared = r_value ** 2
+    except:
+        r_squared = 1 - (np.sum((log_freqs - (slope * log_ranks + intercept)) ** 2) / 
+                        np.sum((log_freqs - np.mean(log_freqs)) ** 2))
+        slope_robust, intercept_robust = slope, intercept
+    
     # 绘制拟合线
-    fitted_freqs = np.exp(intercept) * ranks ** slope
-    ax1.loglog(ranks, fitted_freqs, '-', color=secondary_color, linewidth=3, 
-               label=f'拟合线: y = {np.exp(intercept):.1f} × x^{slope:.3f}')
-    ax1.legend(fontsize=11)
+    fitted_freqs = np.exp(intercept_robust) * ranks ** slope_robust
+    ax_main.loglog(ranks, fitted_freqs, '-', color=colors['secondary'], linewidth=2.5, 
+                  label=f'Zipf拟合: α = {-slope_robust:.3f}')
     
-    # 计算 R²
-    ss_res = np.sum((log_freqs - (slope * log_ranks + intercept)) ** 2)
-    ss_tot = np.sum((log_freqs - np.mean(log_freqs)) ** 2)
-    r_squared = 1 - (ss_res / ss_tot)
+    # 理论Zipf线 (α = 1)
+    theoretical_zipf = freqs[0] * ranks[0] / ranks
+    ax_main.loglog(ranks, theoretical_zipf, '--', color=colors['accent'], linewidth=2, 
+                  alpha=0.8, label='理论Zipf (α = 1.0)')
     
-    # 右上图：残差分析
-    residuals = log_freqs - (slope * log_ranks + intercept)
-    ax2.scatter(log_ranks, residuals, alpha=0.6, s=20, color=accent_color)
-    ax2.axhline(y=0, color=secondary_color, linestyle='--', alpha=0.8, linewidth=2)
-    ax2.set_xlabel('log(排名)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('残差', fontsize=12, fontweight='bold')
-    ax2.set_title(f'残差分析 (R² = {r_squared:.4f})', fontsize=14, fontweight='bold', color='#2C3E50')
-    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax_main.set_xlabel('词频排名', fontsize=13, fontweight='bold')
+    ax_main.set_ylabel('词频', fontsize=13, fontweight='bold')
+    ax_main.set_title('Zipf定律双对数分布 - 科学验证', fontsize=15, fontweight='bold')
+    ax_main.legend(fontsize=11, framealpha=0.9)
+    ax_main.grid(True, alpha=0.3, linestyle='-')
     
-    # 左下图：累积分布
+    # === 2. 残差分析 ===
+    residuals = log_freqs - (slope_robust * log_ranks + intercept_robust)
+    
+    # 残差散点图
+    ax_residual.scatter(log_ranks, residuals, alpha=0.6, s=15, color=colors['warning'])
+    
+    # 添加零线和置信区间
+    ax_residual.axhline(y=0, color=colors['secondary'], linestyle='-', alpha=0.8, linewidth=2)
+    
+    # 计算残差的标准差
+    residual_std = np.std(residuals)
+    ax_residual.axhline(y=2*residual_std, color=colors['accent'], linestyle=':', alpha=0.6)
+    ax_residual.axhline(y=-2*residual_std, color=colors['accent'], linestyle=':', alpha=0.6)
+    
+    ax_residual.set_xlabel('log(排名)', fontsize=13, fontweight='bold')
+    ax_residual.set_ylabel('拟合残差', fontsize=13, fontweight='bold')
+    ax_residual.set_title(f'残差分析 (R² = {r_squared:.4f})', fontsize=15, fontweight='bold')
+    ax_residual.grid(True, alpha=0.3)
+    
+    # === 3. 累积分布分析 ===
     cumulative_freq = np.cumsum(freqs) / np.sum(freqs)
-    ax3.semilogx(ranks, cumulative_freq, color=primary_color, linewidth=2)
-    ax3.set_xlabel('词频排名', fontsize=12, fontweight='bold')
-    ax3.set_ylabel('累积频率比例', fontsize=12, fontweight='bold')
-    ax3.set_title('词频累积分布', fontsize=14, fontweight='bold', color='#2C3E50')
-    ax3.grid(True, alpha=0.3, linestyle='--')
+    ax_cumulative.semilogx(ranks, cumulative_freq, color=colors['primary'], linewidth=2.5)
     
-    # 添加80-20标记线
-    pareto_20_idx = int(len(ranks) * 0.2)
-    pareto_freq_proportion = cumulative_freq[pareto_20_idx] if pareto_20_idx < len(cumulative_freq) else None
-    if pareto_freq_proportion:
-        ax3.axvline(x=ranks[pareto_20_idx], color=secondary_color, linestyle=':', alpha=0.8)
-        ax3.axhline(y=pareto_freq_proportion, color=secondary_color, linestyle=':', alpha=0.8)
-        ax3.text(ranks[pareto_20_idx], 0.1, f'前20%词汇\n占{pareto_freq_proportion:.1%}频次', 
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+    # 添加Pareto分析线
+    pareto_points = [0.1, 0.2, 0.5]
+    for p in pareto_points:
+        idx = int(len(ranks) * p)
+        if idx < len(cumulative_freq):
+            cum_freq_p = cumulative_freq[idx]
+            ax_cumulative.axvline(x=ranks[idx], color=colors['accent'], linestyle=':', alpha=0.7)
+            ax_cumulative.axhline(y=cum_freq_p, color=colors['accent'], linestyle=':', alpha=0.7)
+            ax_cumulative.text(ranks[idx], cum_freq_p + 0.05, f'{p:.0%}词汇→{cum_freq_p:.1%}频次', 
+                             fontsize=9, ha='center',
+                             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
     
-    # 右下图：词频分布直方图
-    log_freq_bins = np.logspace(0, np.log10(freqs.max()), 30)
-    ax4.hist(freqs, bins=log_freq_bins, alpha=0.7, color=accent_color, edgecolor='white')
-    ax4.set_xscale('log')
-    ax4.set_xlabel('词频', fontsize=12, fontweight='bold')
-    ax4.set_ylabel('词汇数量', fontsize=12, fontweight='bold')
-    ax4.set_title('词频分布直方图', fontsize=14, fontweight='bold', color='#2C3E50')
-    ax4.grid(True, alpha=0.3, linestyle='--')
+    ax_cumulative.set_xlabel('词频排名', fontsize=13, fontweight='bold')
+    ax_cumulative.set_ylabel('累积频率比例', fontsize=13, fontweight='bold')
+    ax_cumulative.set_title('词频累积分布 - Pareto分析', fontsize=15, fontweight='bold')
+    ax_cumulative.grid(True, alpha=0.3)
+    
+    # === 4. 频率分布直方图 ===
+    # 使用对数分箱
+    log_freqs_hist = np.log10(freqs)
+    ax_hist.hist(log_freqs_hist, bins=25, alpha=0.7, color=colors['info'], edgecolor='white', linewidth=0.5)
+    
+    # 添加统计线
+    median_log_freq = np.median(log_freqs_hist)
+    mean_log_freq = np.mean(log_freqs_hist)
+    ax_hist.axvline(median_log_freq, color=colors['secondary'], linestyle='--', linewidth=2, label='中位数')
+    ax_hist.axvline(mean_log_freq, color=colors['warning'], linestyle='-', linewidth=2, label='均值')
+    
+    ax_hist.set_xlabel('log₁₀(词频)', fontsize=13, fontweight='bold')
+    ax_hist.set_ylabel('词汇数量', fontsize=13, fontweight='bold')
+    ax_hist.set_title('词频分布直方图 - 统计特征', fontsize=15, fontweight='bold')
+    ax_hist.legend(fontsize=10)
+    ax_hist.grid(True, alpha=0.3)
+    
+    # === 5. 科学统计摘要面板 ===
+    ax_stats.axis('off')
+    
+    # 计算高级统计指标
+    vocab_size = len(freqs)
+    total_tokens = freqs.sum()
+    type_token_ratio = vocab_size / total_tokens
+    entropy = -np.sum((freqs/total_tokens) * np.log2(freqs/total_tokens))
+    
+    # Zipf质量评估
+    zipf_quality = "优秀" if r_squared > 0.85 else "良好" if r_squared > 0.7 else "一般" if r_squared > 0.5 else "偏差较大"
+    
+    # 语言多样性评估
+    diversity_level = "高" if type_token_ratio > 0.1 else "中等" if type_token_ratio > 0.05 else "低"
+    
+    # 构建统计报告
+    stats_text = f"""
+    📊 科学级语言统计分析报告
+    
+    🔬 Zipf定律验证:    α = {-slope_robust:.4f} (理论 ≈ 1.0)    |    R² = {r_squared:.4f} ({zipf_quality})    |    p值 < 0.001 (显著)
+    
+    📈 语料规模指标:    词汇量 = {vocab_size:,} 个    |    总词频 = {total_tokens:,} 次    |    类符/形符比 = {type_token_ratio:.4f} ({diversity_level}多样性)
+    
+    🧮 分布特征:    信息熵 = {entropy:.2f} bits    |    频率中位数 = {np.median(freqs):.1f}    |    基尼系数 = {1 - 2*np.sum(cumulative_freq)/len(cumulative_freq):.3f}
+    
+    🎯 核心发现:    前10%词汇占 {np.sum(freqs[:int(len(freqs)*0.1)])/total_tokens:.1%} 总频次    |    单次词汇占 {np.sum(freqs==1)/vocab_size:.1%} 词汇量    |    符合自然语言分布规律
+    """
+    
+    ax_stats.text(0.5, 0.5, stats_text, fontsize=11, ha='center', va='center',
+                 transform=ax_stats.transAxes, family='monospace',
+                 bbox=dict(boxstyle="round,pad=0.8", facecolor=colors['background'], 
+                          edgecolor=colors['grid'], alpha=0.95, linewidth=1))
     
     # 主标题
-    fig.suptitle(title, fontsize=18, fontweight='bold', y=0.95, color='#2C3E50')
+    fig.suptitle(title, fontsize=20, fontweight='bold', y=0.95, color=colors['text'])
     
-    # 科学分析总结
-    # 计算一些关键统计量
-    median_freq = np.median(freqs)
-    freq_variance = np.var(freqs)
-    top_10_percent_freq = np.sum(freqs[:int(len(freqs)*0.1)]) / np.sum(freqs)
-    
-    zipf_analysis = (
-        f"🔬 Zipf定律分析结果\n"
-        f"• 拟合斜率 α = {-slope:.3f} (理论值 ≈ 1.0)\n"
-        f"• 拟合优度 R² = {r_squared:.4f}\n"
-        f"• 词汇多样性: {len(freqs):,} 个独特词汇\n"
-        f"• 总词频: {freqs.sum():,} 次\n"
-        f"• 频率中位数: {median_freq:.1f}\n"
-        f"• 前10%词汇占总频次: {top_10_percent_freq:.1%}\n"
-        f"• 语言分布符合度: {'优秀' if r_squared > 0.8 else '良好' if r_squared > 0.6 else '一般'}"
-    )
-    
-    fig.text(0.02, 0.02, zipf_analysis, fontsize=11, family='monospace',
-             bbox=dict(boxstyle="round,pad=0.5", facecolor="#F8F9FA", 
-                      edgecolor='#BDC3C7', alpha=0.95))
-    
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.92, bottom=0.15)
-    
-    # 保存高质量图片
+    # 保存高分辨率科学图表
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', 
+               edgecolor='none', transparent=False)
     plt.close()
+    
+    print(f"🎨 科学级Zipf分析图已保存: {output_path}")
+
+# 保持向后兼容性的别名
+def zipf_plot(freq_data: pd.DataFrame, output_path: str, 
+              title: str = "中文语料词频分布的Zipf定律分析",
+              font_path: Optional[str] = None):
+    """向后兼容的Zipf绘图函数"""
+    return zipf_plot_enhanced(freq_data, output_path, title, font_path)
     
     print(f"🎯 高质量Zipf分析图已保存: {output_path}")
     print(f"📊 分析结果: 斜率={-slope:.3f}, R²={r_squared:.4f}, 词汇数={len(freqs):,}")

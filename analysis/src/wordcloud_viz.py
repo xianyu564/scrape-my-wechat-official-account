@@ -1,5 +1,6 @@
 """
-词云可视化模块 - 生成高颜值中文词云
+词云可视化模块 - 增强版
+生成期刊级别的高颜值中文词云，符合科学研究审美标准
 """
 
 import os
@@ -11,6 +12,28 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from typing import Dict, Optional, List, Tuple
 import warnings
+import colorsys
+
+
+# Nature期刊配色方案
+NATURE_COLORMAP = [
+    '#0C7BDC', '#E1AF00', '#DC143C', '#039BE5', '#FFA726',
+    '#2CA02C', '#9467BD', '#8C564B', '#D62728', '#1F77B4',
+    '#FF7F0E', '#17BECF', '#BCBD22', '#7F7F7F', '#E377C2'
+]
+
+# Science期刊配色方案  
+SCIENCE_COLORMAP = [
+    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+    '#393b79', '#637939', '#8c6d31', '#843c39', '#7b4173'
+]
+
+# Cell期刊配色方案
+CELL_COLORMAP = [
+    '#1B9E77', '#D95F02', '#7570B3', '#E7298A', '#66A61E',
+    '#E6AB02', '#A6761D', '#666666', '#FF6B35', '#004F2D'
+]
 
 
 def create_circular_mask(size: Tuple[int, int] = (800, 800)) -> np.ndarray:
@@ -596,3 +619,269 @@ def create_wordcloud_comparison(freq_data_dict: Dict[str, pd.DataFrame],
 if __name__ == "__main__":
     # 创建默认蒙版
     create_default_mask()
+
+
+# =================
+# 增强版科学词云系统
+# =================
+
+def enhanced_scientific_color_func(word: str, font_size: int, position: Tuple[int, int], 
+                                  orientation: int, random_state: int, **kwargs) -> str:
+    """
+    科学期刊级别配色函数 - 增强版
+    
+    Args:
+        word: 词汇
+        font_size: 字体大小
+        position: 位置
+        orientation: 方向
+        random_state: 随机种子
+        **kwargs: 包含color_scheme等参数
+    
+    Returns:
+        str: 颜色十六进制代码
+    """
+    np.random.seed(random_state if random_state else 42)
+    
+    # 选择配色方案
+    color_scheme = kwargs.get('color_scheme', 'nature')
+    
+    if color_scheme == 'nature':
+        palette = NATURE_COLORMAP
+    elif color_scheme == 'science':
+        palette = SCIENCE_COLORMAP  
+    elif color_scheme == 'cell':
+        palette = CELL_COLORMAP
+    else:
+        palette = NATURE_COLORMAP  # 默认
+    
+    # 基于词汇特征和字体大小的智能配色
+    word_hash = hash(word) % len(palette)
+    base_color = palette[word_hash]
+    
+    # 转换为RGB
+    rgb = mcolors.hex2color(base_color)
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    
+    # 根据字体大小调整亮度和饱和度
+    if font_size > 60:
+        # 大字体：高饱和度，适中亮度
+        s = min(1.0, s * 1.2)
+        l = max(0.3, min(0.7, l + np.random.normal(0, 0.05)))
+    elif font_size > 35:
+        # 中字体：中等饱和度和亮度
+        s = min(1.0, s * 1.0)
+        l = max(0.4, min(0.8, l + np.random.normal(0, 0.08)))
+    else:
+        # 小字体：降低饱和度，提高亮度以保证可读性
+        s = min(1.0, s * 0.8)
+        l = max(0.5, min(0.9, l + np.random.normal(0, 0.1)))
+    
+    # 转换回RGB
+    rgb_adjusted = colorsys.hls_to_rgb(h, l, s)
+    return mcolors.rgb2hex(rgb_adjusted)
+
+
+def create_scientific_wordcloud(word_freq: Dict[str, int],
+                               output_path: str,
+                               title: str = "",
+                               mask_path: Optional[str] = None,
+                               font_path: Optional[str] = None,
+                               color_scheme: str = "nature",
+                               width: int = 1600,
+                               height: int = 1200,
+                               max_words: int = 300,
+                               relative_scaling: float = 0.5,
+                               min_font_size: int = 8,
+                               max_font_size: int = 100,
+                               background_color: str = "white") -> bool:
+    """
+    生成期刊级别的科学词云图 - 增强版
+    
+    Args:
+        word_freq: 词频字典 {word: frequency}
+        output_path: 输出文件路径
+        title: 图片标题
+        mask_path: 蒙版图片路径
+        font_path: 中文字体路径
+        color_scheme: 配色方案 ("nature", "science", "cell")
+        width: 图片宽度
+        height: 图片高度
+        max_words: 最大词汇数量
+        relative_scaling: 字体大小相对缩放
+        min_font_size: 最小字体大小
+        max_font_size: 最大字体大小
+        background_color: 背景颜色
+    
+    Returns:
+        bool: 是否成功生成
+    """
+    if not word_freq:
+        warnings.warn("词频数据为空，无法生成词云")
+        return False
+    
+    try:
+        # 加载蒙版
+        mask = None
+        if mask_path and os.path.exists(mask_path):
+            try:
+                mask_image = Image.open(mask_path)
+                # 转换为灰度并调整大小
+                mask_image = mask_image.convert("RGBA").resize((width, height))
+                mask = np.array(mask_image)
+                # 创建蒙版：透明区域为0，其他为255
+                if mask.shape[2] == 4:  # 有透明通道
+                    mask = mask[:, :, 3]  # 使用alpha通道
+                else:
+                    mask = mask[:, :, 0]  # 使用第一个通道
+            except Exception as e:
+                warnings.warn(f"加载蒙版失败: {e}")
+                mask = None
+        
+        # 设置字体
+        font_path_final = None
+        if font_path and os.path.exists(font_path):
+            font_path_final = font_path
+        else:
+            # 尝试系统默认中文字体
+            possible_fonts = [
+                '/System/Library/Fonts/Arial Unicode MS.ttf',  # macOS
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux
+                'C:/Windows/Fonts/msyh.ttc',  # Windows
+                'SimHei', 'Arial Unicode MS', 'DejaVu Sans'
+            ]
+            for font in possible_fonts:
+                if os.path.exists(font):
+                    font_path_final = font
+                    break
+        
+        # 创建WordCloud对象
+        wc = WordCloud(
+            width=width,
+            height=height,
+            mask=mask,
+            font_path=font_path_final,
+            max_words=max_words,
+            background_color=background_color,
+            relative_scaling=relative_scaling,
+            min_font_size=min_font_size,
+            max_font_size=max_font_size,
+            color_func=lambda *args, **kwargs: enhanced_scientific_color_func(*args, color_scheme=color_scheme, **kwargs),
+            collocations=False,  # 避免词汇重复组合
+            prefer_horizontal=0.9,  # 90%的词汇水平放置
+            random_state=42,
+            include_numbers=True,
+            normalize_plurals=False
+        )
+        
+        # 生成词云
+        wordcloud = wc.generate_from_frequencies(word_freq)
+        
+        # 创建科学级可视化
+        # 使用黄金比例和高DPI
+        fig_width = 16
+        fig_height = fig_width / 1.618
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='white')
+        
+        # 显示词云
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis('off')
+        
+        # 添加科学风格标题
+        if title:
+            ax.set_title(title, fontsize=20, fontweight='bold', 
+                        color='#2C3E50', pad=20, fontname='Arial')
+        
+        # 添加科学风格边框
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        
+        # 调整布局
+        plt.tight_layout(pad=1.0)
+        
+        # 保存高质量图片
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight', 
+                   facecolor='white', edgecolor='none', transparent=False)
+        plt.close()
+        
+        print(f"🎨 科学级词云已生成: {os.path.basename(output_path)}")
+        return True
+        
+    except Exception as e:
+        warnings.warn(f"生成词云失败: {e}")
+        return False
+
+
+def generate_enhanced_overall_wordcloud(freq_data: pd.DataFrame,
+                                       output_dir: str,
+                                       mask_path: Optional[str] = None,
+                                       font_path: Optional[str] = None,
+                                       top_n: int = 300,
+                                       color_scheme: str = "nature") -> Optional[str]:
+    """
+    生成增强版整体词云 - 期刊质量
+    
+    Args:
+        freq_data: 词频数据
+        output_dir: 输出目录
+        mask_path: 蒙版路径
+        font_path: 字体路径
+        top_n: 词汇数量
+        color_scheme: 配色方案
+    
+    Returns:
+        Optional[str]: 输出文件路径
+    """
+    try:
+        if freq_data.empty:
+            warnings.warn("词频数据为空")
+            return None
+        
+        # 取前N个词汇
+        top_words = freq_data.head(top_n)
+        
+        # 确保频率列存在且为数值类型
+        if 'freq' not in top_words.columns:
+            warnings.warn("词频数据中缺少'freq'列")
+            return None
+            
+        # 转换为词频字典
+        word_freq = {}
+        for _, row in top_words.iterrows():
+            try:
+                word = str(row['word']).strip()
+                freq = int(float(row['freq']))
+                if freq > 0 and word:
+                    word_freq[word] = freq
+            except (ValueError, TypeError):
+                continue
+        
+        if not word_freq:
+            warnings.warn("处理后没有有效的词频数据")
+            return None
+        
+        # 生成增强版词云
+        output_path = os.path.join(output_dir, "wordcloud_overall_enhanced.png")
+        title = f"语料词汇图谱 | 词汇总量: {len(word_freq):,} | 配色: {color_scheme.title()}"
+        
+        success = create_scientific_wordcloud(
+            word_freq=word_freq,
+            output_path=output_path,
+            title=title,
+            mask_path=mask_path,
+            font_path=font_path,
+            color_scheme=color_scheme,
+            width=1800,
+            height=1200,
+            max_words=top_n,
+            relative_scaling=0.6,
+            min_font_size=10,
+            max_font_size=120
+        )
+        
+        return output_path if success else None
+        
+    except Exception as e:
+        warnings.warn(f"生成增强版整体词云失败: {e}")
+        return None

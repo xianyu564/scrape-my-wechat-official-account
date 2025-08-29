@@ -105,7 +105,7 @@ def analyze_corpus(
         if not text:
             continue
         
-        tokens = tokenizer.tokenize(text, chinese_only=True, ngram_max=ngram_max)
+        tokens = tokenizer.tokenize(text, chinese_only=False, ngram_max=ngram_max, preserve_english=True)
         if tokens:
             corpus_tokens.append(tokens)
             
@@ -130,12 +130,12 @@ def analyze_corpus(
     
     # TF-IDF 分析
     print("🔍 计算 TF-IDF 关键词...")
-    def create_tokenizer_func(tokenizer, chinese_only=True, ngram_max=1):
+    def create_tokenizer_func(tokenizer, chinese_only=False, ngram_max=1, preserve_english=True):
         def tokenize_func(text):
-            return tokenizer.tokenize(text, chinese_only, ngram_max)
+            return tokenizer.tokenize(text, chinese_only, ngram_max, preserve_english)
         return tokenize_func
     
-    tokenizer_func = create_tokenizer_func(tokenizer, chinese_only=True, ngram_max=ngram_max)
+    tokenizer_func = create_tokenizer_func(tokenizer, chinese_only=False, ngram_max=ngram_max)
     
     try:
         tfidf_by_year = tfidf_topk_by_year(
@@ -238,26 +238,31 @@ def generate_visualizations(
     
     # Zipf 定律分析
     if generate_zipf:
-        print("📈 生成 Zipf 定律分析图...")
-        zipf_path = os.path.join(output_dir, "zipf_overall.png")
-        zipf_plot(
+        print("📈 生成科学级 Zipf 定律分析图...")
+        zipf_path = os.path.join(output_dir, "zipf_overall_enhanced.png")
+        from src.freq_stats import zipf_plot_enhanced
+        zipf_plot_enhanced(
             freq_data=freq_overall,
             output_path=zipf_path,
-            font_path=font_path
+            title="中文语料词频分布的科学级Zipf定律分析",
+            font_path=font_path,
+            color_scheme="nature"
         )
         generated_files['zipf_plot'] = zipf_path
     
     # 生成词云
     if make_wordcloud:
-        print("🎨 生成词云...")
+        print("🎨 生成期刊级词云...")
         
-        # 整体词云
-        overall_wordcloud_path = generate_overall_wordcloud(
+        # 增强版整体词云
+        from src.wordcloud_viz import generate_enhanced_overall_wordcloud
+        overall_wordcloud_path = generate_enhanced_overall_wordcloud(
             freq_data=freq_overall,
             output_dir=output_dir,
             mask_path=mask_path,
             font_path=font_path,
-            top_n=wordcloud_top_n
+            top_n=wordcloud_top_n,
+            color_scheme="nature"
         )
         if overall_wordcloud_path:
             generated_files['overall_wordcloud'] = overall_wordcloud_path
@@ -481,29 +486,29 @@ def main():
         'end_date': None,             # "2023-12-31" 或 None  
         'years': None,                # ["2021", "2022", "2023"] 或 None
         
-        # 分词参数
-        'min_df': 5,                  # TF-IDF最小文档频率
-        'max_df': 0.85,               # TF-IDF最大文档频率
-        'ngram_max': 2,               # 最大n-gram长度
-        'topk': 50,                   # 每年返回的关键词数量
+        # 分词参数 - 优化以支持复杂中文语言结构
+        'min_df': 3,                  # TF-IDF最小文档频率 (降低以保留更多有意义词汇)
+        'max_df': 0.90,               # TF-IDF最大文档频率 (提高以保留常用词)
+        'ngram_max': 3,               # 最大n-gram长度 (增加以支持三字词、成语等)
+        'topk': 100,                  # 每年返回的关键词数量 (增加以获得更丰富分析)
         
         # 自定义文件路径  
         'userdict_path': None,        # 自定义词典文件
         'extra_stopwords_path': None, # 额外停用词文件
     }
     
-    # 第二步：可视化参数
+    # 第二步：可视化参数  
     VISUALIZATION_PARAMS = {
-        # 词云设置 - 高质量科学风格
+        # 词云设置 - 期刊级科学风格
         'make_wordcloud': True,              # 是否生成词云
-        'wordcloud_top_n': 300,              # 整体词云词汇数量 (增加以获得更丰富的视觉效果)
-        'yearly_wordcloud_top_n': 150,       # 年度词云词汇数量 (增加层次感)
+        'wordcloud_top_n': 400,              # 整体词云词汇数量 (增加以获得更丰富的视觉效果)
+        'yearly_wordcloud_top_n': 200,       # 年度词云词汇数量 (增加层次感)
         'font_path': None,                   # 中文字体文件路径，如 "/path/to/simhei.ttf"
         'mask_path': "analysis/assets/mask.png",  # 词云遮罩图片
         
         # 其他输出
         'generate_report': True,             # 是否生成Markdown报告  
-        'generate_zipf': True,               # 是否生成Zipf定律分析图
+        'generate_zipf': True,               # 是否生成科学级Zipf定律分析图
     }
     
     # =================================================================
