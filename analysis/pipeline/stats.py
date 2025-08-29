@@ -317,15 +317,16 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
     """
     Analyze Heaps' law: vocabulary growth with corpus size
     V = K * n^β where V=vocabulary size, n=corpus size
+    Includes bootstrap confidence interval estimation
     
     Args:
         corpus_tokens: List of tokenized documents
         
     Returns:
-        Dict: Heaps analysis results (K, beta, r_squared)
+        Dict: Heaps analysis results (K, beta, r_squared, confidence intervals)
     """
     if not corpus_tokens:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+        return {'K': 0, 'beta': 0, 'r_squared': 0, 'confidence_lower': 0, 'confidence_upper': 0}
     
     # Calculate cumulative vocabulary size
     vocabulary = set()
@@ -340,8 +341,20 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
         corpus_sizes.append(total_tokens)
         vocab_sizes.append(len(vocabulary))
     
-    if len(corpus_sizes) < 10:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+    # Adaptive threshold for small datasets
+    min_points = min(10, max(3, len(corpus_sizes) // 2))
+    if len(corpus_sizes) < min_points:
+        # Return degraded result for very small datasets
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0, 
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'warning': f'Insufficient data points ({len(corpus_sizes)}) for reliable Heaps analysis'
+        }
     
     # Convert to numpy arrays
     n = np.array(corpus_sizes)
@@ -352,8 +365,17 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
     n = n[valid_indices]
     V = V[valid_indices]
     
-    if len(n) < 10:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+    if len(n) < min_points:
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0,
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'warning': f'Insufficient valid data points ({len(n)}) for reliable Heaps analysis'
+        }
     
     # Log-log regression: log(V) = log(K) + β * log(n)
     log_n = np.log(n)
@@ -363,19 +385,90 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
         beta, log_K, r_value, p_value, std_err = stats.linregress(log_n, log_V)
         K = math.exp(log_K)
         
-        return {
+        # Bootstrap confidence interval estimation
+        confidence_lower, confidence_upper = _bootstrap_heaps_confidence(log_n, log_V, n_bootstrap=100)
+        
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        
+        result = {
             'K': K,
             'beta': beta,
             'r_squared': r_value ** 2,
             'p_value': p_value,
             'std_err': std_err,
+            'confidence_lower': confidence_lower,
+            'confidence_upper': confidence_upper,
             'total_documents': len(corpus_tokens),
             'final_corpus_size': corpus_sizes[-1],
-            'final_vocab_size': vocab_sizes[-1]
+            'final_vocab_size': vocab_sizes[-1],
+            'final_ttr': final_ttr,
+            'valid_points': len(n)
         }
+        
+        # Add warning for small datasets
+        if len(n) < 10:
+            result['warning'] = f'Small dataset ({len(n)} points) may affect reliability of Heaps law estimation'
+            
+        return result
+        
     except Exception as e:
         warnings.warn(f"Heaps analysis failed: {e}")
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0,
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'error': str(e)
+        }
+
+
+def _bootstrap_heaps_confidence(log_n: np.ndarray, log_V: np.ndarray, 
+                               n_bootstrap: int = 100, confidence_level: float = 0.95) -> Tuple[float, float]:
+    """
+    Bootstrap confidence interval for Heaps law parameters
+    
+    Args:
+        log_n: Log corpus sizes
+        log_V: Log vocabulary sizes
+        n_bootstrap: Number of bootstrap samples
+        confidence_level: Confidence level (default 0.95 for 95% CI)
+    
+    Returns:
+        Tuple[float, float]: Lower and upper confidence bounds for beta parameter
+    """
+    if len(log_n) < 3:
+        return 0.0, 0.0
+        
+    np.random.seed(42)  # For reproducibility
+    bootstrap_betas = []
+    
+    for _ in range(n_bootstrap):
+        # Resample with replacement
+        indices = np.random.choice(len(log_n), size=len(log_n), replace=True)
+        boot_log_n = log_n[indices]
+        boot_log_V = log_V[indices]
+        
+        try:
+            beta, _, _, _, _ = stats.linregress(boot_log_n, boot_log_V)
+            bootstrap_betas.append(beta)
+        except:
+            continue
+    
+    if not bootstrap_betas:
+        return 0.0, 0.0
+    
+    # Calculate confidence interval
+    alpha = 1 - confidence_level
+    lower_percentile = (alpha / 2) * 100
+    upper_percentile = (1 - alpha / 2) * 100
+    
+    confidence_lower = np.percentile(bootstrap_betas, lower_percentile)
+    confidence_upper = np.percentile(bootstrap_betas, upper_percentile)
+    
+    return confidence_lower, confidence_upper
 
 
 

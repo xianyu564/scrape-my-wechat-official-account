@@ -21,7 +21,9 @@ plt.rcParams['axes.unicode_minus'] = False
 COLOR_SCHEMES = {
     'nature': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'],
     'science': ['#2E8B57', '#4682B4', '#CD853F', '#DC143C', '#9932CC', '#FF8C00'],
-    'calm': ['#6B8E23', '#4F94CD', '#CD853F', '#F4A460', '#9ACD32', '#87CEEB']
+    'calm': ['#6B8E23', '#4F94CD', '#CD853F', '#F4A460', '#9ACD32', '#87CEEB'],
+    'muted': ['#88CCEE', '#CC6677', '#DDCC77', '#117733', '#332288', '#AA4499'],
+    'solar': ['#FDB863', '#E08214', '#8073AC', '#542788', '#2D004B', '#B35806']
 }
 
 
@@ -210,11 +212,16 @@ def create_zipf_panels(frequencies: Counter,
     fig.text(0.02, 0.02, stats_text, fontsize=10, 
              bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7))
     
+    # Add approximation warning
+    fig.text(0.98, 0.02, "⚠️ Zipf law fitting is an approximation - interpret results carefully",
+             fontsize=8, style='italic', alpha=0.7, ha='right')
+    
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     
     print(f"📈 Zipf panels saved: {output_path}")
+    print("ℹ️  Note: Zipf law analysis is an approximation - please interpret results carefully")
 
 
 def create_heaps_plot(corpus_tokens: List[List[str]], 
@@ -223,7 +230,7 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
                      font_path: Optional[str] = None,
                      color_scheme: str = 'nature') -> None:
     """
-    Create Heaps' law analysis plot with confidence intervals
+    Create Heaps' law analysis plot with bootstrap confidence intervals
     
     Args:
         corpus_tokens: Tokenized documents
@@ -247,8 +254,10 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
         corpus_sizes.append(total_tokens)
         vocab_sizes.append(len(vocabulary))
     
-    if len(corpus_sizes) < 10:
-        print("⚠️  Insufficient data for Heaps analysis")
+    # Adaptive handling for small datasets
+    min_points = min(10, max(3, len(corpus_sizes) // 2))
+    if len(corpus_sizes) < min_points:
+        print(f"⚠️  Insufficient data for Heaps analysis ({len(corpus_sizes)} points)")
         return
     
     n = np.array(corpus_sizes)
@@ -258,23 +267,25 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
     fig, ax = plt.subplots(1, 1, figsize=(10, 6), dpi=300)
     
     # Plot actual data
-    ax.plot(n, V, 'o', color=colors[0], alpha=0.7, markersize=4, label='Observed')
+    ax.plot(n, V, 'o', color=colors[0], alpha=0.7, markersize=4, label='Observed Data')
     
-    # Plot fitted curve
+    # Plot fitted curve and confidence bands
     K = heaps_results.get('K', 0)
     beta = heaps_results.get('beta', 0)
+    confidence_lower = heaps_results.get('confidence_lower', 0)
+    confidence_upper = heaps_results.get('confidence_upper', 0)
     
     if K > 0 and beta > 0:
         fitted_V = K * (n ** beta)
         ax.plot(n, fitted_V, '-', color=colors[1], linewidth=2, 
                 label=f'Heaps Law: V = {K:.1f} × n^{beta:.3f}')
         
-        # Add confidence interval (simplified)
-        std_err = heaps_results.get('std_err', 0)
-        if std_err > 0:
-            upper_bound = K * 1.1 * (n ** beta)
-            lower_bound = K * 0.9 * (n ** beta)
-            ax.fill_between(n, lower_bound, upper_bound, alpha=0.2, color=colors[1])
+        # Add bootstrap confidence bands if available
+        if confidence_lower > 0 and confidence_upper > 0:
+            upper_V = K * (n ** confidence_upper)
+            lower_V = K * (n ** confidence_lower)
+            ax.fill_between(n, lower_V, upper_V, alpha=0.2, color=colors[1],
+                          label=f'95% Confidence Band (β: {confidence_lower:.3f}-{confidence_upper:.3f})')
     
     ax.set_xlabel('Corpus Size (tokens)')
     ax.set_ylabel('Vocabulary Size (unique tokens)')
@@ -282,18 +293,31 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
     ax.legend()
     ax.grid(True, alpha=0.3)
     
-    # Add statistics
+    # Add statistics with warning if applicable
     r_squared = heaps_results.get('r_squared', 0)
-    stats_text = f"K = {K:.1f}\nβ = {beta:.3f}\nR² = {r_squared:.3f}"
-    ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=11,
+    valid_points = heaps_results.get('valid_points', len(corpus_sizes))
+    warning = heaps_results.get('warning', '')
+    
+    stats_text = f"K = {K:.1f}\nβ = {beta:.3f}\nR² = {r_squared:.3f}\nPoints = {valid_points}"
+    if warning:
+        stats_text += f"\n⚠️  {warning[:30]}..."  # Truncate long warnings
+    
+    ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=10,
             verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", 
-                                               facecolor="lightgray", alpha=0.8))
+                                               facecolor="lightyellow" if warning else "lightgray", 
+                                               alpha=0.8))
+    
+    # Add approximation note
+    ax.text(0.05, 0.02, "Note: Heaps law fitting is an approximation - interpret results carefully",
+            transform=ax.transAxes, fontsize=8, style='italic', alpha=0.7)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     
     print(f"📈 Heaps plot saved: {output_path}")
+    if warning:
+        print(f"⚠️  {warning}")
 
 
 def create_wordcloud(frequencies: Counter,

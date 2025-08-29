@@ -28,21 +28,44 @@ from stats import (
 )
 from viz import (
     create_zipf_panels, create_heaps_plot, create_wordcloud,
-    create_yearly_comparison_chart, create_growth_chart
+    create_yearly_comparison_chart, create_growth_chart, COLOR_SCHEMES
 )
 from report import write_report
 
 
-def print_and_save_config(config: Dict[str, Any], output_dir: str) -> None:
+def print_and_save_config(config: Dict[str, Any], output_dir: str, 
+                         tokenizer_info: Optional[Dict] = None,
+                         font_path: Optional[str] = None) -> None:
     """
-    Print configuration to console and save to summary.json
+    Print configuration to console and save comprehensive snapshot to summary.json
     """
+    import platform
+    import time
+    from datetime import datetime
+    
+    # Enhance config with system and runtime information
+    enhanced_config = config.copy()
+    enhanced_config.update({
+        'system_info': {
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'timestamp': datetime.now().isoformat(),
+            'working_directory': os.getcwd()
+        },
+        'runtime_info': {
+            'tokenizer_used': tokenizer_info.get('tokenizer_type', 'unknown') if tokenizer_info else 'unknown',
+            'tokenizer_details': tokenizer_info if tokenizer_info else {},
+            'font_path_resolved': font_path,
+            'color_schemes_available': list(COLOR_SCHEMES.keys()) if 'COLOR_SCHEMES' in globals() else []
+        }
+    })
+    
     print("=" * 70)
     print("🔧 FINAL CONFIGURATION PARAMETERS")
     print("=" * 70)
     
     # Print configuration
-    for section, params in config.items():
+    for section, params in enhanced_config.items():
         print(f"\n📋 {section.upper()}:")
         if isinstance(params, dict):
             for key, value in params.items():
@@ -57,14 +80,14 @@ def print_and_save_config(config: Dict[str, Any], output_dir: str) -> None:
     
     # Save to summary.json
     summary_path = os.path.join(output_dir, "summary.json")
-    summary_data = {"config": config}
+    summary_data = {"config": enhanced_config}
     
     # Load existing summary if it exists
     if os.path.exists(summary_path):
         try:
             with open(summary_path, 'r', encoding='utf-8') as f:
                 existing_data = json.load(f)
-            existing_data["config"] = config
+            existing_data["config"] = enhanced_config
             summary_data = existing_data
         except Exception:
             pass  # Use new summary data if loading fails
@@ -134,7 +157,7 @@ Examples:
     # Visualization parameters
     parser.add_argument('--font-path', type=str,
                        help='Path to Chinese font file')
-    parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm'],
+    parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm', 'muted', 'solar'],
                        help='Color scheme for visualizations (default: nature)')
     
     # Reproducibility
