@@ -222,28 +222,6 @@ def _write_executive_summary(f, report_data: Dict[str, Any]) -> None:
     f.write("\n")
 
 
-def _write_methods(f, tokenizer_info: Dict[str, Any], analysis_params: Dict[str, Any]) -> None:
-    """Write methods section"""
-    f.write("## 2. Methods & Configuration\n\n")
-    
-    tokenizer_name = tokenizer_info.get('name', 'unknown')
-    fallback_note = " (fallback: jieba)" if 'jieba' in tokenizer_name.lower() else ""
-    
-    f.write("### 🔧 Processing Pipeline\n\n")
-    f.write(f"- **Tokenizer**: {tokenizer_name}{fallback_note}\n")
-    f.write(f"- **N-gram Analysis**: max_n={analysis_params.get('max_n', 8)}, collocation={analysis_params.get('collocation', 'pmi')}\n")
-    f.write(f"- **TF-IDF**: scikit-learn with pre-tokenized input\n")
-    f.write(f"- **Statistical Laws**: Zipf's law (rank-frequency), Heaps' law (vocabulary growth)\n")
-    f.write(f"- **Random Seed**: {analysis_params.get('seed', 42)} (for reproducibility)\n\n")
-    
-    f.write("### 📚 User Dictionaries\n\n")
-    user_dicts = tokenizer_info.get('user_dictionaries', 0)
-    if user_dicts > 0:
-        f.write(f"Loaded {user_dicts} custom dictionaries for technical term preservation.\n\n")
-    else:
-        f.write("No custom dictionaries loaded (using default tokenization).\n\n")
-
-
 def _write_global_overview(f, report_data: Dict[str, Any]) -> None:
     """Write enhanced global overview"""
     f.write("## 3. Global Overview\n\n")
@@ -274,40 +252,6 @@ def _write_yearly_snapshots(f, report_data: Dict[str, Any]) -> None:
         f.write(f"- **Total Terms**: {data['total_terms']:,}\n")
         f.write(f"- **Unique Terms**: {data['unique_terms']:,}\n")
         f.write(f"- **Top Terms**: {', '.join(data['top_terms'])}\n\n")
-
-
-def _write_phrase_inventory(f, report_data: Dict[str, Any]) -> None:
-    """Write phrase inventory section"""
-    f.write("## 5. Phrase Inventory\n\n")
-    
-    ngram_stats = report_data['ngram_stats']
-    
-    # Show n-gram detection results
-    for n in range(1, 9):
-        count = ngram_stats.get(n, 0)
-        if count > 0:
-            f.write(f"- **{n}-grams**: {count:,} detected\n")
-    
-    f.write("\n")
-
-
-def _write_yoy_movers(f, growth_data: List[Dict[str, Any]]) -> None:
-    """Write year-over-year movers section"""
-    f.write("## 6. Year-over-Year Movers\n\n")
-    
-    if not growth_data:
-        f.write("No growth data available.\n\n")
-        return
-    
-    # Sort by growth and show top movers
-    sorted_growth = sorted(growth_data, key=lambda x: x.get('growth', 0), reverse=True)
-    
-    f.write("### 📈 Rising Terms\n\n")
-    for item in sorted_growth[:10]:
-        if item.get('growth', 0) > 0:
-            f.write(f"- **{item['word']}**: +{item['growth']:.1f}% growth\n")
-    
-    f.write("\n")
 
 
 def _write_statistical_laws(f, report_data: Dict[str, Any]) -> None:
@@ -387,25 +331,174 @@ def _write_cheer_up_summary(f, report_data: Dict[str, Any]) -> None:
     f.write("*Keep writing, keep growing, keep being awesome!* ✨\n\n")
 
 
+def _write_methods(f, tokenizer_info: Dict[str, Any], analysis_params: Dict[str, Any]) -> None:
+    """Write methods section"""
+    f.write("## 2. Methods & Configuration\n\n")
+    
+    tokenizer_name = tokenizer_info.get('name', 'unknown')
+    fallback_note = " (fallback: jieba)" if 'jieba' in tokenizer_name.lower() else ""
+    
+    f.write("### 🔧 Processing Pipeline\n\n")
+    f.write(f"- **Tokenizer**: {tokenizer_name}{fallback_note}\n")
+    f.write(f"- **N-gram Analysis**: max_n={analysis_params.get('max_n', 8)}, collocation={analysis_params.get('collocation', 'pmi')}\n")
+    f.write(f"- **TF-IDF**: scikit-learn with pre-tokenized input\n")
+    f.write(f"- **Statistical Laws**: Zipf's law (rank-frequency), Heaps' law (vocabulary growth)\n")
+    f.write(f"- **Random Seed**: {analysis_params.get('seed', 42)} (for reproducibility)\n\n")
+    
+    f.write("### 📚 User Dictionaries\n\n")
+    user_dicts = tokenizer_info.get('user_dictionaries', 0)
+    if user_dicts > 0:
+        f.write(f"Loaded {user_dicts} custom dictionaries for technical term preservation.\n\n")
+    else:
+        f.write("No custom dictionaries loaded (using default tokenization).\n\n")
+    
+    slope = zipf_results.get('slope', 0)
+    r_squared = zipf_results.get('r_squared', 0)
+    f.write(f"| Zipf slope (R²) | {slope:.3f} ({r_squared:.3f}) |\n\n")
+    
+    # Add visualization references
+    f.write("![Zipf panels](out/fig_zipf_panels.png)\n\n")
+    f.write("![Heaps law](out/fig_heaps.png)\n\n")
+
+
+def _write_yearly_snapshots(f, 
+                          freq_by_year: Dict[str, Counter],
+                          tfidf_results: pd.DataFrame) -> None:
+    """Write yearly snapshots with word clouds"""
+    f.write("## 4. Yearly Snapshots\n\n")
+    
+    years = sorted(freq_by_year.keys())
+    
+    for year in years:
+        f.write(f"### {year}\n\n")
+        
+        # Top 20 frequency table
+        f.write("**Top 20 (frequency)**\n\n")
+        f.write("| Rank | Token | Freq |\n")
+        f.write("|---:|---|---:|\n")
+        
+        year_freq = freq_by_year[year]
+        for rank, (word, freq) in enumerate(year_freq.most_common(20), 1):
+            f.write(f"| {rank} | {word} | {freq:,} |\n")
+        
+        f.write("\n")
+        
+        # Top 20 TF-IDF table
+        f.write("**Top 20 (TF-IDF)**\n\n")
+        f.write("| Rank | Token | Score |\n") 
+        f.write("|---:|---|---:|\n")
+        
+        if not tfidf_results.empty and 'year' in tfidf_results.columns:
+            year_tfidf = tfidf_results[tfidf_results['year'] == year].head(20)
+            for rank, (_, row) in enumerate(year_tfidf.iterrows(), 1):
+                word = row['word']
+                score = row['score']
+                f.write(f"| {rank} | {word} | {score:.4f} |\n")
+        else:
+            f.write("| - | Analysis pending | - |\n")
+        
+        f.write("\n")
+        
+        # Word cloud
+        f.write("**Word Cloud**\n\n")
+        f.write(f"![{year} cloud](out/cloud_{year}.png)\n\n")
+
+
+def _write_phrase_inventory(f, ngram_stats: Dict[str, int], freq_overall: Counter) -> None:
+    """Write phrase inventory section"""
+    f.write("## 5. Phrase Inventory\n\n")
+    
+    # N-gram lengths detected
+    detected_lengths = [n for n, count in ngram_stats.items() if isinstance(n, int) and count > 0]
+    if detected_lengths:
+        max_n = max(detected_lengths)
+        f.write(f"- **N-gram lengths detected**: 1–{max_n}\n\n")
+    else:
+        f.write("- **N-gram lengths detected**: 1 (unigrams only)\n\n")
+    
+    # Sample phrases table
+    f.write("**Samples**\n\n")
+    f.write("| n | Example phrases (≤10) |\n")
+    f.write("|---:|---|\n")
+    
+    # Extract sample phrases by length
+    samples_by_length = _extract_phrase_samples(freq_overall)
+    
+    for n in range(1, 9):  # Up to 8-grams
+        if n in samples_by_length and samples_by_length[n]:
+            examples = ", ".join(samples_by_length[n][:10])
+            f.write(f"| {n} | {examples} |\n")
+        else:
+            f.write(f"| {n} | - |\n")
+    
+    f.write("\n")
+
+
+def _write_yoy_movers(f, growth_data: List[Dict[str, Any]]) -> None:
+    """Write year-over-year movers section"""
+    f.write("## 6. YoY Movers (Top 20)\n\n")
+    
+    if not growth_data:
+        f.write("*No year-over-year data available (single year corpus)*\n\n")
+        return
+    
+    f.write("| Token | Year(t-1) | Year(t) | Δ |\n")
+    f.write("|---|---:|---:|---:|\n")
+    
+    # Sort by growth and take top 20
+    sorted_growth = sorted(growth_data, key=lambda x: x.get('growth', 0), reverse=True)[:20]
+    
+    for item in sorted_growth:
+        word = item.get('word', '')
+        prev_count = item.get('prev_count', 0)
+        curr_count = item.get('curr_count', 0)
+        growth = item.get('growth', 0)
+        
+        delta_str = f"+{growth}" if growth > 0 else str(growth)
+        f.write(f"| {word} | {prev_count} | {curr_count} | {delta_str} |\n")
+    
+    f.write("\n")
+
+
 def _write_repro_notes(f, analysis_params: Dict[str, Any], tokenizer_info: Dict[str, Any]) -> None:
-    """Write reproducibility notes section"""
-    f.write("## 9. Reproducibility Notes\n\n")
+    """Write reproduction notes"""
+    f.write("## 7. Notes for Repro & Parameters\n\n")
     
-    f.write("### 🔄 Parameters Used\n\n")
-    f.write("```json\n")
-    f.write(json.dumps({
-        'analysis': {k: v for k, v in analysis_params.items() if k in ['max_n', 'min_freq', 'collocation', 'seed']},
-        'tokenizer': tokenizer_info.get('name', 'unknown')
-    }, indent=2, ensure_ascii=False))
-    f.write("\n```\n\n")
+    max_n = analysis_params.get('max_n', 6)
+    min_freq = analysis_params.get('min_freq', 5)
+    collocation = analysis_params.get('collocation', 'pmi')
     
-    f.write("### 📋 System Information\n\n")
-    f.write(f"- **Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    f.write(f"- **Tokenizer Backend**: {tokenizer_info.get('name', 'unknown')}\n")
+    f.write(f"- `MAX_N={max_n}, MIN_FREQ={min_freq}, COLLOCATION='{collocation}'`\n")
+    f.write(f"- `TOKENIZER='{tokenizer_info.get('name', 'unknown')}'`\n")
+    f.write("- `RUN_ANALYSIS=True, RUN_VISUALIZATION=True`\n")
+    f.write("- All results reproducible with `SEED=42`\n\n")
     
-    fallback_used = tokenizer_info.get('fallback_used', False)
-    if fallback_used:
-        f.write("- **Note**: pkuseg unavailable, jieba fallback used\n")
+    # Generation timestamp
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    f.write("---\n\n")
+    f.write(f"*Report generated: {timestamp}*\n")
+    f.write("*Analysis engine: Robust Chinese + Mixed-Language Linguistic Analysis System*\n")
+    f.write("*Designed to cheer myself up from my past papers ✨*\n")
+
+
+def _extract_phrase_samples(frequencies: Counter) -> Dict[int, List[str]]:
+    """Extract sample phrases by n-gram length"""
+    samples = {}
     
-    f.write("\n---\n\n")
-    f.write("*Report generated by Enhanced Linguistic Analysis Pipeline v2.0*\n")
+    for phrase, freq in frequencies.most_common(1000):  # Look at top frequent terms
+        # Determine phrase length
+        if '_' in phrase:
+            # Compound n-gram
+            parts = phrase.split('_')
+            n = len(parts)
+        else:
+            # Single token
+            n = 1
+        
+        if n not in samples:
+            samples[n] = []
+        
+        if len(samples[n]) < 15:  # Collect up to 15 examples per length
+            samples[n].append(phrase)
+    
+    return samples
