@@ -258,8 +258,11 @@ def _write_global_overview(f, report_data: Dict[str, Any]) -> None:
     f.write(f"| Unique Terms | {lexical_metrics.get('total_unique_tokens', 0):,} |\n")
     f.write(f"| Total Tokens | {lexical_metrics.get('total_tokens', 0):,} |\n")
     f.write(f"| Type-Token Ratio | {lexical_metrics.get('type_token_ratio', 0):.4f} |\n")
-    f.write(f"| Lexical Density | {lexical_metrics.get('lexical_density', 0):.3f} |\n")
-    f.write(f"| Average Article Length | {lexical_metrics.get('avg_tokens_per_doc', 0):.1f} tokens |\n")
+    avg_tokens_per_doc = (
+        lexical_metrics.get('total_tokens', 0) / corpus_stats.get('total_articles', 1)
+        if corpus_stats.get('total_articles', 0) > 0 else 0
+    )
+    f.write(f"| Average Article Length | {avg_tokens_per_doc:.1f} tokens |\n")
     f.write("\n")
 
 
