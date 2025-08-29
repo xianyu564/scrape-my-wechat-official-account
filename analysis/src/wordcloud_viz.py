@@ -259,20 +259,47 @@ def generate_overall_wordcloud(freq_data: pd.DataFrame,
     try:
         # 取前 N 个词
         top_words = freq_data.head(top_n)
-        # 确保频率是整数类型并且大于0
-        valid_data = top_words[top_words['freq'] > 0]
-        if valid_data.empty:
+        
+        # 确保有数据
+        if top_words.empty:
+            warnings.warn("没有词频数据")
+            return False
+        
+        # 确保频率列存在且为数值类型
+        if 'freq' not in top_words.columns:
+            warnings.warn("词频数据中缺少'freq'列")
+            return False
+            
+        # 过滤出有效数据 - 避免类型转换问题
+        valid_indices = []
+        for idx, row in top_words.iterrows():
+            try:
+                freq_val = row['freq']
+                if pd.notna(freq_val) and (isinstance(freq_val, (int, float)) and freq_val > 0):
+                    valid_indices.append(idx)
+            except:
+                continue
+        
+        if not valid_indices:
             warnings.warn("没有有效的词频数据")
             return False
             
+        valid_data = top_words.loc[valid_indices]
+        
         word_freq = {}
         for _, row in valid_data.iterrows():
             try:
-                word = str(row['word'])
-                freq = int(float(row['freq']))  # 先转float再转int，处理可能的浮点数
-                if freq > 0:  # 只保留正数频率
-                    word_freq[word] = freq
-            except (ValueError, TypeError):
+                word = str(row['word']).strip()
+                freq_val = row['freq']
+                
+                # 简化类型转换
+                if isinstance(freq_val, (int, float)) and not pd.isna(freq_val):
+                    freq = int(freq_val)
+                    if freq > 0 and word:
+                        word_freq[word] = freq
+                        
+            except (ValueError, TypeError, AttributeError) as e:
+                print(f"⚠️ 跳过无效数据: word={row.get('word', 'N/A')}, freq={row.get('freq', 'N/A')}, error={e}")
                 continue
         
         if not word_freq:
@@ -292,6 +319,15 @@ def generate_overall_wordcloud(freq_data: pd.DataFrame,
             use_scientific_colors=True
         )
     except Exception as e:
+        print(f"❌ 整体词云生成失败的详细错误:")
+        print(f"   错误类型: {type(e).__name__}")
+        print(f"   错误信息: {str(e)}")
+        print(f"   数据统计: 有效词汇数={len(word_freq) if 'word_freq' in locals() else '未知'}")
+        if 'word_freq' in locals() and word_freq:
+            sample_items = list(word_freq.items())[:3]
+            print(f"   样本数据: {sample_items}")
+        import traceback
+        traceback.print_exc()
         warnings.warn(f"生成整体词云失败: {e}")
         return False
 
@@ -331,15 +367,24 @@ def generate_yearly_wordclouds(freq_by_year: pd.DataFrame,
         # 取前 N 个词
         top_words = year_data.head(top_n)
         
+        if top_words.empty:
+            continue
+        
         # 安全地处理词频数据
         word_freq = {}
         for _, row in top_words.iterrows():
             try:
-                word = str(row['word'])
-                freq = int(float(row['freq']))
-                if freq > 0:
-                    word_freq[word] = freq
-            except (ValueError, TypeError):
+                word = str(row['word']).strip()
+                freq_val = row['freq']
+                
+                # 简化类型转换
+                if isinstance(freq_val, (int, float)) and not pd.isna(freq_val):
+                    freq = int(freq_val)
+                    if freq > 0 and word:
+                        word_freq[word] = freq
+                        
+            except (ValueError, TypeError, AttributeError) as e:
+                print(f"⚠️ 跳过年度数据: year={year}, word={row.get('word', 'N/A')}, freq={row.get('freq', 'N/A')}, error={e}")
                 continue
         
         if not word_freq:
