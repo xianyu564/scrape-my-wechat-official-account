@@ -119,8 +119,7 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
                     max_df=max_df,
                     max_features=max_features,
                     stop_words=None,                     # Already handled in tokenizer
-                    token_pattern=None,                  # Use custom tokenizer
-                    analyzer='word'                      # Work at word level
+                    token_pattern=None                   # Use custom tokenizer
                 )
                 
                 # Fit and transform pre-tokenized texts
