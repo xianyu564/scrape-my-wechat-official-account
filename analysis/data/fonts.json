@@ -1,0 +1,69 @@
+{
+  "chinese_fonts": {
+    "noto_cjk": {
+      "names": ["Noto Sans CJK SC", "Noto Sans CJK TC", "Noto Sans CJK"],
+      "paths": [
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"
+      ],
+      "quality": "highest",
+      "description": "Google Noto CJK fonts - best quality for Chinese text"
+    },
+    "source_han": {
+      "names": ["Source Han Sans SC", "Source Han Sans TC", "Source Han Sans"],
+      "paths": [
+        "/usr/share/fonts/opentype/source-han-sans/SourceHanSansSC-Regular.otf",
+        "/usr/share/fonts/truetype/source-han-sans/SourceHanSansSC-Regular.ttf"
+      ],
+      "quality": "highest",
+      "description": "Adobe Source Han Sans - excellent for mixed CJK content"
+    },
+    "microsoft_fonts": {
+      "names": ["Microsoft YaHei", "SimHei", "SimSun"],
+      "paths": [
+        "C:\\Windows\\Fonts\\msyh.ttc",
+        "C:\\Windows\\Fonts\\msyhbd.ttc",
+        "C:\\Windows\\Fonts\\simhei.ttf",
+        "C:\\Windows\\Fonts\\simsun.ttc"
+      ],
+      "quality": "good",
+      "description": "Windows built-in Chinese fonts"
+    },
+    "apple_fonts": {
+      "names": ["PingFang SC", "STHeiti", "Hiragino Sans GB"],
+      "paths": [
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        "/Library/Fonts/Arial Unicode MS.ttf"
+      ],
+      "quality": "good",
+      "description": "macOS built-in Chinese fonts"
+    },
+    "linux_fallback": {
+      "names": ["WenQuanYi Micro Hei", "WenQuanYi Zen Hei", "AR PL UMing CN"],
+      "paths": [
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/arphic/uming.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
+      ],
+      "quality": "acceptable",
+      "description": "Common Linux Chinese fonts"
+    }
+  },
+  "install_instructions": {
+    "ubuntu_debian": "sudo apt install fonts-noto-cjk fonts-wqy-microhei",
+    "centos_rhel": "sudo yum install google-noto-cjk-fonts wqy-microhei-fonts",
+    "fedora": "sudo dnf install google-noto-cjk-fonts wqy-microhei-fonts",
+    "macos": "brew install --cask font-noto-sans-cjk-sc",
+    "windows": "Download from https://fonts.google.com/noto/specimen/Noto+Sans+SC",
+    "manual_download": "https://github.com/googlefonts/noto-cjk/releases"
+  },
+  "wordcloud_requirements": {
+    "note": "WordCloud requires explicit font file path, not just font family name",
+    "fallback_strategy": "Use Liberation Sans or DejaVu Sans if no CJK fonts available"
+  }
+}

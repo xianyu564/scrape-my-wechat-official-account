@@ -27,7 +27,7 @@ COLOR_SCHEMES = {
 
 def setup_chinese_font(font_path: Optional[str] = None) -> str:
     """
-    Setup Chinese font for matplotlib and wordcloud
+    Setup Chinese font for matplotlib and wordcloud with comprehensive auto-detection
     
     Args:
         font_path: Path to Chinese font file
@@ -39,31 +39,84 @@ def setup_chinese_font(font_path: Optional[str] = None) -> str:
         try:
             font_prop = font_manager.FontProperties(fname=font_path)
             plt.rcParams['font.family'] = font_prop.get_name()
+            print(f"✅ Using custom font: {font_path}")
             return font_path
         except Exception as e:
             warnings.warn(f"Failed to load custom font {font_path}: {e}")
     
-    # Try to find system Chinese fonts
+    # First, try to find fonts using matplotlib's font manager
+    try:
+        # Check for installed fonts that support Chinese
+        chinese_font_families = [
+            'Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK',
+            'Source Han Sans SC', 'Source Han Sans TC', 'Source Han Sans',
+            'Microsoft YaHei', 'SimHei', 'SimSun', 'STHeiti',
+            'PingFang SC', 'Hiragino Sans GB', 'Heiti SC',
+            'WenQuanYi Micro Hei', 'WenQuanYi Zen Hei', 'AR PL UMing CN'
+        ]
+        
+        available_fonts = set()
+        for font in font_manager.fontManager.ttflist:
+            if font.name:
+                available_fonts.add(font.name)
+        
+        for font_family in chinese_font_families:
+            if font_family in available_fonts:
+                plt.rcParams['font.family'] = font_family
+                # Try to find the actual font file for wordcloud
+                for font in font_manager.fontManager.ttflist:
+                    if font.name == font_family:
+                        print(f"✅ Using system font: {font_family} ({font.fname})")
+                        return font.fname
+                print(f"✅ Using system font: {font_family}")
+                return None  # Font available but no file path found
+    except Exception as e:
+        warnings.warn(f"Font manager search failed: {e}")
+    
+    # Fallback: Try to find font files in common locations
     chinese_fonts = [
-        '/System/Library/Fonts/PingFang.ttc',  # macOS
-        '/System/Library/Fonts/STHeiti Light.ttc',  # macOS
-        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',  # Linux
-        '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',  # Linux
-        'C:\\Windows\\Fonts\\simhei.ttf',  # Windows
-        'C:\\Windows\\Fonts\\simsun.ttc',  # Windows
+        # Linux - Noto fonts
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
+        # Linux - Other fonts
+        '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+        '/usr/share/fonts/truetype/arphic/uming.ttc',
+        # macOS
+        '/System/Library/Fonts/PingFang.ttc',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+        '/System/Library/Fonts/Hiragino Sans GB.ttc',
+        '/Library/Fonts/Arial Unicode MS.ttf',
+        # Windows
+        'C:\\Windows\\Fonts\\simhei.ttf',
+        'C:\\Windows\\Fonts\\simsun.ttc',
+        'C:\\Windows\\Fonts\\msyh.ttc',  # Microsoft YaHei
+        'C:\\Windows\\Fonts\\msyhbd.ttc',  # Microsoft YaHei Bold
     ]
     
-    for font_path in chinese_fonts:
-        if os.path.exists(font_path):
+    for font_file in chinese_fonts:
+        if os.path.exists(font_file):
             try:
-                font_prop = font_manager.FontProperties(fname=font_path)
+                font_prop = font_manager.FontProperties(fname=font_file)
                 plt.rcParams['font.family'] = font_prop.get_name()
-                print(f"✅ Using Chinese font: {font_path}")
-                return font_path
-            except Exception:
+                print(f"✅ Using Chinese font file: {font_file}")
+                return font_file
+            except Exception as e:
+                warnings.warn(f"Failed to load font {font_file}: {e}")
                 continue
     
-    print("⚠️  No Chinese font found, text may not display correctly")
+    # Final fallback: try downloading Noto fonts if none found
+    print("⚠️  No Chinese font found locally")
+    print("💡 Consider installing Noto CJK fonts:")
+    print("   - Ubuntu/Debian: sudo apt install fonts-noto-cjk")
+    print("   - CentOS/RHEL: sudo yum install google-noto-cjk-fonts")
+    print("   - macOS: brew install --cask font-noto-sans-cjk-sc")
+    print("   - Or download from: https://fonts.google.com/noto/specimen/Noto+Sans+SC")
+    
     return None
 
 
