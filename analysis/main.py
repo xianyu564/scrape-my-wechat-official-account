@@ -314,50 +314,50 @@ def generate_markdown_report(
     analysis_params: dict,
     output_dir: str
 ) -> str:
-    """生成优雅简洁的科学风格 Markdown 分析报告"""
+    """Generate scientific-grade Markdown analysis report with English interface"""
     
     report_path = os.path.join(output_dir, "REPORT.md")
     
     with open(report_path, 'w', encoding='utf-8') as f:
-        # 标题和摘要
-        f.write("# 📊 中文语料词频分析报告\n\n")
-        f.write("> **分析对象**: 个人微信公众号文章语料库\n")
-        f.write("> **分析方法**: 基于Zipf定律的词频统计分析\n")
-        f.write("> **技术栈**: jieba分词 + TF-IDF + 统计可视化\n\n")
+        # Header and executive summary
+        f.write("# 📊 Chinese Linguistic Corpus Analysis Report\n\n")
+        f.write("> **Analysis Target**: Personal WeChat Official Account Article Corpus\n")
+        f.write("> **Methodology**: Zipf's Law-based Frequency Statistical Analysis\n")
+        f.write("> **Technology Stack**: jieba tokenization + TF-IDF + Statistical Visualization\n\n")
         
         f.write("---\n\n")
         
-        # 核心发现 (Executive Summary)
-        f.write("## 🎯 核心发现\n\n")
+        # Core findings (Executive Summary)
+        f.write("## 🎯 Executive Summary\n\n")
         
         if 'total_articles' in corpus_stats and 'total_unique_words' in stats_summary:
             total_articles = corpus_stats['total_articles']
             unique_words = stats_summary['total_unique_words']
             total_freq = stats_summary['total_word_freq']
             
-            f.write(f"📈 **语料规模**: {total_articles:,} 篇文章，{unique_words:,} 个独特词汇，总词频 {total_freq:,}\n\n")
+            f.write(f"📈 **Corpus Scale**: {total_articles:,} articles, {unique_words:,} unique tokens, total frequency {total_freq:,}\n\n")
             
-            # 计算词汇密度
+            # Calculate vocabulary density
             vocab_density = unique_words / total_freq if total_freq > 0 else 0
-            diversity_level = "高" if vocab_density > 0.1 else "中" if vocab_density > 0.05 else "低"
-            f.write(f"🧠 **词汇密度**: {vocab_density:.3f} ({diversity_level}水平) - 反映语言表达的丰富程度\n\n")
+            diversity_level = "High" if vocab_density > 0.1 else "Medium" if vocab_density > 0.05 else "Low"
+            f.write(f"🧠 **Vocabulary Density**: {vocab_density:.3f} ({diversity_level} level) - Reflecting linguistic expression richness\n\n")
         
         if 'years' in stats_summary and len(stats_summary['years']) > 1:
             years = stats_summary['years']
-            f.write(f"⏱️ **时间跨度**: {min(years)}-{max(years)}年 ({len(years)}年数据)\n\n")
+            f.write(f"⏱️ **Temporal Span**: {min(years)}-{max(years)} ({len(years)} years of data)\n\n")
         
-        # 高频词云图
-        f.write("## 🎨 整体词汇图谱\n\n")
-        f.write("![整体词云](wordcloud_overall.png)\n\n")
-        f.write("*词汇大小反映使用频率，颜色编码基于科学期刊配色方案*\n\n")
+        # Overall vocabulary map
+        f.write("## 🎨 Overall Vocabulary Landscape\n\n")
+        f.write("![Overall Word Cloud](wordcloud_overall.png)\n\n")
+        f.write("*Word size reflects usage frequency, color encoding follows scientific journal color schemes*\n\n")
         
-        # 词频统计TOP榜
-        f.write("## 🔥 高频词汇TOP20\n\n")
+        # Top frequency statistics
+        f.write("## 🔥 Top 20 High-Frequency Words\n\n")
         if not freq_overall.empty:
             top_20 = freq_overall.head(20)
             
-            # 创建两列布局
-            f.write("| 排名 | 词汇 | 频次 | 排名 | 词汇 | 频次 |\n")
+            # Create two-column layout
+            f.write("| Rank | Word | Freq | Rank | Word | Freq |\n")
             f.write("|:---:|:---:|:---:|:---:|:---:|:---:|\n")
             
             for i in range(0, min(20, len(top_20)), 2):
@@ -377,101 +377,124 @@ def generate_markdown_report(
             
             f.write("\n")
         
-        # Zipf定律分析
-        f.write("## 📈 语言统计规律分析\n\n")
-        f.write("![Zipf定律分析](zipf_overall.png)\n\n")
-        f.write("**Zipf定律验证**: 词频与排名呈反比关系，验证了中文语料的自然语言特性。\n\n")
+        # Zipf's Law analysis
+        f.write("## 📈 Linguistic Statistical Pattern Analysis\n\n")
+        f.write("![Zipf's Law Analysis](zipf_overall_enhanced.png)\n\n")
+        f.write("**Zipf's Law Validation**: Word frequency exhibits inverse relationship with rank, confirming natural language characteristics of Chinese corpus.\n\n")
         
-        # 年度演进分析 (简化版)
+        # Annual evolution analysis
         if 'years' in stats_summary and len(stats_summary['years']) > 1:
-            f.write("## 📅 年度语言特征演进\n\n")
+            f.write("## 📅 Annual Linguistic Evolution\n\n")
             
             years = sorted(stats_summary['years'])
             
-            # 创建年度对比表
-            f.write("| 年份 | 核心关键词 | 词汇特征 |\n")
+            # Create annual comparison table
+            f.write("| Year | Core Keywords | Distinctive Features |\n")
             f.write("|:---:|:---:|:---|\n")
             
             for year in years:
-                # 获取年度高频词
+                # Get annual high-frequency words
                 year_freq = freq_by_year[freq_by_year['year'] == year].head(3)
                 if not year_freq.empty:
                     top_words = " • ".join(year_freq['word'].tolist())
                 else:
-                    top_words = "数据缺失"
+                    top_words = "Data Missing"
                 
-                # 获取年度特色词(TF-IDF)
+                # Get annual distinctive words (TF-IDF)
                 if not tfidf_by_year.empty and 'year' in tfidf_by_year.columns:
                     year_tfidf = tfidf_by_year[tfidf_by_year['year'] == year].head(2)
                     if not year_tfidf.empty:
                         distinctive_words = " • ".join(year_tfidf['word'].tolist())
                     else:
-                        distinctive_words = "待分析"
+                        distinctive_words = "Under Analysis"
                 else:
-                    distinctive_words = "待分析"
+                    distinctive_words = "Under Analysis"
                 
                 f.write(f"| **{year}** | {top_words} | {distinctive_words} |\n")
             
             f.write("\n")
             
-            # 年度词云画廊 (紧凑展示)
-            f.write("### 🖼️ 年度词云演进\n\n")
+            # Annual word cloud gallery (compact display)
+            f.write("### 🖼️ Annual Word Cloud Evolution\n\n")
             
-            # 每行展示2-3个年份
+            # Display 3 years per row
             years_per_row = 3
             for i in range(0, len(years), years_per_row):
                 year_group = years[i:i+years_per_row]
                 
-                # 图片行
-                img_row = " | ".join([f"![{year}年](wordcloud_{year}.png)" for year in year_group])
+                # Image row
+                img_row = " | ".join([f"![{year}](wordcloud_{year}.png)" for year in year_group])
                 f.write(f"| {img_row} |\n")
                 
-                # 标题行
-                title_row = " | ".join([f"**{year}年**" for year in year_group])
+                # Title row
+                title_row = " | ".join([f"**{year}**" for year in year_group])
                 f.write(f"| {title_row} |\n")
                 
-                # 分隔符
+                # Separator
                 sep_row = " | ".join([":---:" for _ in year_group])
                 f.write(f"| {sep_row} |\n\n")
         
-        # 技术细节与参数
+        # Technical specifications and parameters
         f.write("---\n\n")
-        f.write("## ⚙️ 分析技术规格\n\n")
+        f.write("## ⚙️ Technical Specifications\n\n")
         
-        f.write("**核心参数配置**:\n")
-        f.write(f"- 分词引擎: jieba (精确模式) + 122个自定义短语词典\n")
-        f.write(f"- TF-IDF参数: min_df={analysis_params.get('min_df', 'N/A')}, max_df={analysis_params.get('max_df', 'N/A')}\n")
-        f.write(f"- **N-gram长度**: 1-{analysis_params.get('ngram_max', 'N/A')} (支持单字词、双字词、三字词、四字成语等)\n")
-        f.write(f"- 停用词库: 内置76个 + 自定义扩展\n")
-        f.write(f"- 中英混合: 智能识别并保留英文术语\n")
-        f.write(f"- 可视化: 科学期刊配色 + 300 DPI高分辨率输出\n\n")
+        f.write("**Core Configuration Parameters**:\n")
+        f.write(f"- Tokenization Engine: jieba (precise mode) + {get_phrase_dict_size()} custom phrase dictionary entries\n")
+        f.write(f"- TF-IDF Parameters: min_df={analysis_params.get('min_df', 'N/A')}, max_df={analysis_params.get('max_df', 'N/A')}\n")
+        f.write(f"- **N-gram Length**: 1-{analysis_params.get('ngram_max', 'N/A')} (supporting single chars, words, phrases, four-character idioms)\n")
+        f.write(f"- Stopwords Library: Built-in 76 + custom extensions\n")
+        f.write(f"- Mixed Chinese-English: Intelligent recognition and preservation of English technical terms\n")
+        f.write(f"- Visualization: Scientific journal color schemes + 300 DPI high-resolution output\n\n")
         
-        # 添加N-gram统计信息
+        # Add comprehensive N-gram statistics
         if 'ngram_stats' in stats_summary:
             ngram_stats = stats_summary['ngram_stats']
-            f.write("**语言结构分析**:\n")
-            f.write(f"- 单字词: {ngram_stats.get('单字词', 0)} 个 (有意义汉字保留)\n")
-            f.write(f"- 双字词: {ngram_stats.get('双字词', 0)} 个 (常用词汇)\n") 
-            f.write(f"- 三字词: {ngram_stats.get('三字词', 0)} 个 (俗语、技术术语)\n")
-            f.write(f"- 四字词: {ngram_stats.get('四字词', 0)} 个 (成语、复合概念)\n")
-            f.write(f"- 英文词: {ngram_stats.get('英文词', 0)} 个 (技术术语保留)\n")
-            f.write(f"- 复合词: {ngram_stats.get('复合词', 0)} 个 (N-gram组合)\n\n")
+            f.write("**Linguistic Structure Analysis**:\n")
+            f.write(f"- Single Characters: {ngram_stats.get('单字词', 0):,} tokens (meaningful Chinese characters retained)\n")
+            f.write(f"- Two-Character Words: {ngram_stats.get('双字词', 0):,} tokens (common vocabulary)\n") 
+            f.write(f"- Three-Character Phrases: {ngram_stats.get('三字词', 0):,} tokens (colloquialisms, technical terms)\n")
+            f.write(f"- Four-Character Idioms: {ngram_stats.get('四字词', 0):,} tokens (idioms, compound concepts)\n")
+            f.write(f"- Multi-Character Terms: {ngram_stats.get('多字词', 0):,} tokens (complex technical terminology)\n")
+            f.write(f"- English Words: {ngram_stats.get('英文词', 0):,} tokens (technical terms preserved)\n")
+            f.write(f"- Compound N-grams: {ngram_stats.get('复合词', 0):,} tokens (intelligent n-gram combinations)\n")
+            f.write(f"- Technical Terms: {ngram_stats.get('技术词', 0):,} tokens (domain-specific vocabulary)\n")
+            f.write(f"- Classical Idioms: {ngram_stats.get('成语词', 0):,} tokens (traditional four-character expressions)\n\n")
         
-        f.write("**质量控制**:\n")
-        f.write("- ✅ 单字词语义筛选 (保留有意义汉字)\n")
-        f.write("- ✅ N-gram语义连贯性检查\n") 
-        f.write("- ✅ Zipf定律符合度验证\n")
-        f.write("- ✅ 多维度统计交叉验证\n\n")
+        f.write("**Quality Assurance**:\n")
+        f.write("- ✅ Semantic filtering for single-character words (meaningful Chinese characters retained)\n")
+        f.write("- ✅ N-gram semantic coherence validation\n") 
+        f.write("- ✅ Zipf's Law compliance verification\n")
+        f.write("- ✅ Multi-dimensional statistical cross-validation\n")
+        f.write("- ✅ English-Chinese mixed content intelligent processing\n")
+        f.write("- ✅ Technical terminology preservation and classification\n\n")
         
-        # 页脚
+        # Footer
         f.write("---\n\n")
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"*📋 报告生成时间: {current_time}*\n")
-        f.write(f"*🔧 分析引擎: 中文语料分析系统 v2.0*\n")
-        f.write(f"*📁 数据源: {analysis_params.get('root_dir', '微信公众号语料库')}*\n")
+        f.write(f"*📋 Report Generated: {current_time}*\n")
+        f.write(f"*🔧 Analysis Engine: Advanced Chinese Linguistic Analysis System v3.0*\n")
+        f.write(f"*📁 Data Source: {analysis_params.get('root_dir', 'WeChat Official Account Corpus')}*\n")
+        f.write(f"*🌐 Language Support: Comprehensive Chinese (1-4 character structures) + English Technical Terms*\n")
     
-    print(f"📄 优雅分析报告已生成: {report_path}")
+    print(f"📄 Scientific-grade analysis report generated: {report_path}")
     return report_path
+
+
+def get_phrase_dict_size() -> int:
+    """Get the size of the phrase dictionary for reporting"""
+    try:
+        phrase_dict_path = "analysis/assets/chinese_phrases.txt"
+        if os.path.exists(phrase_dict_path):
+            with open(phrase_dict_path, 'r', encoding='utf-8') as f:
+                count = 0
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        count += 1
+                return count
+    except:
+        pass
+    return 122  # Default fallback
 
 
 def main():

@@ -1,6 +1,7 @@
 """
-词频统计与 TF-IDF 分析模块 - 增强版
-提供科学级统计分析和期刊质量可视化
+Advanced Frequency Statistics and TF-IDF Analysis Module
+Provides scientific-grade statistical analysis and journal-quality visualizations
+with comprehensive n-gram support (1-4) for Chinese linguistic structures.
 """
 
 import os
@@ -479,36 +480,41 @@ def get_stats_summary(freq_overall: pd.DataFrame,
                      freq_by_year: pd.DataFrame,
                      tfidf_by_year: pd.DataFrame) -> Dict:
     """
-    获取统计摘要信息 - 增强版，包含N-gram分析
+    Comprehensive Statistical Summary - Enhanced with N-gram Analysis
     
     Args:
-        freq_overall: 整体词频
-        freq_by_year: 逐年词频
-        tfidf_by_year: 年度 TF-IDF
+        freq_overall: Overall word frequency
+        freq_by_year: Year-wise word frequency
+        tfidf_by_year: Annual TF-IDF results
     
     Returns:
-        Dict: 统计摘要
+        Dict: Comprehensive statistical summary with linguistic structure analysis
     """
     summary = {}
     
-    # 整体统计
+    # Overall statistics
     if not freq_overall.empty:
         summary['total_unique_words'] = len(freq_overall)
         summary['total_word_freq'] = freq_overall['freq'].sum()
         summary['top_words'] = freq_overall.head(10)['word'].tolist()
         
-        # N-gram 结构分析
-        ngram_stats = analyze_ngram_structure(freq_overall['word'].tolist())
+        # Advanced N-gram structure analysis
+        ngram_stats = analyze_comprehensive_ngram_structure(freq_overall['word'].tolist())
         summary['ngram_stats'] = ngram_stats
+        
+        # Vocabulary diversity analysis
+        total_freq = summary['total_word_freq']
+        unique_words = summary['total_unique_words']
+        summary['vocabulary_diversity'] = unique_words / total_freq if total_freq > 0 else 0
     
-    # 年度统计
+    # Annual statistics
     if not freq_by_year.empty:
         years = sorted(freq_by_year['year'].unique())
         summary['years'] = years
         summary['words_by_year'] = freq_by_year.groupby('year')['word'].nunique().to_dict()
         summary['freq_by_year'] = freq_by_year.groupby('year')['freq'].sum().to_dict()
     
-    # TF-IDF 统计
+    # TF-IDF statistics
     if not tfidf_by_year.empty:
         summary['tfidf_years'] = sorted(tfidf_by_year['year'].unique())
         summary['top_tfidf_words'] = tfidf_by_year.groupby('year').head(5).groupby('year')['word'].apply(list).to_dict()
@@ -516,40 +522,58 @@ def get_stats_summary(freq_overall: pd.DataFrame,
     return summary
 
 
-def analyze_ngram_structure(words: List[str]) -> Dict[str, int]:
+def analyze_comprehensive_ngram_structure(words: List[str]) -> Dict[str, int]:
     """
-    分析词汇的N-gram结构分布
+    Comprehensive Analysis of N-gram Structure Distribution
     
     Args:
-        words: 词汇列表
+        words: List of vocabulary
     
     Returns:
-        Dict: N-gram结构统计
+        Dict: Comprehensive N-gram structure statistics with linguistic classification
     """
     import re
     
     stats = {
-        '单字词': 0,
-        '双字词': 0, 
-        '三字词': 0,
-        '四字词': 0,
-        '长词汇': 0,
-        '英文词': 0,
-        '复合词': 0  # 包含下划线的N-gram组合
+        '单字词': 0,  # Single character words
+        '双字词': 0,  # Two-character words
+        '三字词': 0,  # Three-character phrases/terms
+        '四字词': 0,  # Four-character idioms/compounds
+        '多字词': 0,  # Multi-character terms (5+ chars)
+        '英文词': 0,  # English words
+        '复合词': 0,  # Compound words (n-grams with underscore)
+        '技术词': 0,  # Technical terms
+        '成语词': 0   # Idioms and classical phrases
     }
     
+    # Technical term patterns
+    tech_patterns = [
+        r'.*学习.*', r'.*智能.*', r'.*数据.*', r'.*技术.*', r'.*系统.*',
+        r'.*算法.*', r'.*模型.*', r'.*分析.*', r'.*计算.*', r'.*网络.*'
+    ]
+    
+    # Idiom patterns (common 4-character structures)
+    idiom_patterns = [
+        r'^.{4}$',  # Exactly 4 characters - potential idioms
+    ]
+    
     for word in words:
-        # 检查是否为复合词(N-gram)
+        # Check for compound words (N-grams with underscore)
         if '_' in word:
             stats['复合词'] += 1
             continue
             
-        # 检查是否为纯英文
+        # Check for English words
         if re.match(r'^[a-zA-Z]+$', word):
             stats['英文词'] += 1
             continue
+        
+        # Check for technical terms
+        is_technical = any(re.match(pattern, word) for pattern in tech_patterns)
+        if is_technical:
+            stats['技术词'] += 1
             
-        # 按字符长度分类中文词汇
+        # Classify by character length for Chinese words
         char_length = len(word)
         if char_length == 1:
             stats['单字词'] += 1
@@ -559,7 +583,30 @@ def analyze_ngram_structure(words: List[str]) -> Dict[str, int]:
             stats['三字词'] += 1
         elif char_length == 4:
             stats['四字词'] += 1
+            # Additional check for potential idioms
+            if _is_potential_idiom(word):
+                stats['成语词'] += 1
         else:
-            stats['长词汇'] += 1
+            stats['多字词'] += 1
     
     return stats
+
+
+def _is_potential_idiom(word: str) -> bool:
+    """Check if a 4-character word might be an idiom"""
+    import re
+    
+    # Basic patterns for Chinese idioms
+    if len(word) != 4:
+        return False
+    
+    # Must be all Chinese characters
+    if not re.match(r'^[\u4e00-\u9fff]{4}$', word):
+        return False
+    
+    # Avoid words with too many common function characters
+    function_chars = set('的了在是有和就不都一也很到说要去会着没看好自己这那')
+    function_count = sum(1 for char in word if char in function_chars)
+    
+    # Idioms typically have fewer function words
+    return function_count <= 1

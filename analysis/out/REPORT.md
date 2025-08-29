@@ -1,28 +1,28 @@
-# 📊 中文语料词频分析报告
+# 📊 Chinese Linguistic Corpus Analysis Report
 
-> **分析对象**: 个人微信公众号文章语料库
-> **分析方法**: 基于Zipf定律的词频统计分析
-> **技术栈**: jieba分词 + TF-IDF + 统计可视化
+> **Analysis Target**: Personal WeChat Official Account Article Corpus
+> **Methodology**: Zipf's Law-based Frequency Statistical Analysis
+> **Technology Stack**: jieba tokenization + TF-IDF + Statistical Visualization
 
 ---
 
-## 🎯 核心发现
+## 🎯 Executive Summary
 
-📈 **语料规模**: 368 篇文章，736,701 个独特词汇，总词频 1,009,431
+📈 **Corpus Scale**: 368 articles, 736,701 unique tokens, total frequency 1,009,431
 
-🧠 **词汇密度**: 0.730 (高水平) - 反映语言表达的丰富程度
+🧠 **Vocabulary Density**: 0.730 (High level) - Reflecting linguistic expression richness
 
-⏱️ **时间跨度**: 2017-2025年 (9年数据)
+⏱️ **Temporal Span**: 2017-2025 (9 years of data)
 
-## 🎨 整体词汇图谱
+## 🎨 Overall Vocabulary Landscape
 
-![整体词云](wordcloud_overall.png)
+![Overall Word Cloud](wordcloud_overall.png)
 
-*词汇大小反映使用频率，颜色编码基于科学期刊配色方案*
+*Word size reflects usage frequency, color encoding follows scientific journal color schemes*
 
-## 🔥 高频词汇TOP20
+## 🔥 Top 20 High-Frequency Words
 
-| 排名 | 词汇 | 频次 | 排名 | 词汇 | 频次 |
+| Rank | Word | Freq | Rank | Word | Freq |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | 1 | **时候** | 1,812 | 2 | **里** | 1,361 |
 | 3 | **来** | 1,259 | 4 | **想** | 1,177 |
@@ -35,68 +35,74 @@
 | 17 | **多** | 781 | 18 | **生活** | 779 |
 | 19 | **地方** | 718 | 20 | **看到** | 705 |
 
-## 📈 语言统计规律分析
+## 📈 Linguistic Statistical Pattern Analysis
 
-![Zipf定律分析](zipf_overall.png)
+![Zipf's Law Analysis](zipf_overall_enhanced.png)
 
-**Zipf定律验证**: 词频与排名呈反比关系，验证了中文语料的自然语言特性。
+**Zipf's Law Validation**: Word frequency exhibits inverse relationship with rank, confirming natural language characteristics of Chinese corpus.
 
-## 📅 年度语言特征演进
+## 📅 Annual Linguistic Evolution
 
-| 年份 | 核心关键词 | 词汇特征 |
+| Year | Core Keywords | Distinctive Features |
 |:---:|:---:|:---|
-| **2017** | 我们 • 中 • 来 | 待分析 |
-| **2018** | 时候 • 地 • 里 | 待分析 |
-| **2019** | 时候 • 地 • 就是 | 待分析 |
-| **2020** | 时候 • 我们 • 里 | 待分析 |
-| **2021** | 时候 • 里 • 想 | 待分析 |
-| **2022** | 时候 • 里 • 一些 | 待分析 |
-| **2023** | 时候 • 就是 • 来 | 待分析 |
-| **2024** | 时候 • 里 • 给 | 待分析 |
-| **2025** | 一些 • 想 • 里 | 待分析 |
+| **2017** | 我们 • 中 • 来 | Under Analysis |
+| **2018** | 时候 • 地 • 里 | Under Analysis |
+| **2019** | 时候 • 地 • 就是 | Under Analysis |
+| **2020** | 时候 • 我们 • 里 | Under Analysis |
+| **2021** | 时候 • 里 • 想 | Under Analysis |
+| **2022** | 时候 • 里 • 一些 | Under Analysis |
+| **2023** | 时候 • 就是 • 来 | Under Analysis |
+| **2024** | 时候 • 里 • 给 | Under Analysis |
+| **2025** | 一些 • 想 • 里 | Under Analysis |
 
-### 🖼️ 年度词云演进
+### 🖼️ Annual Word Cloud Evolution
 
-| ![2017年](wordcloud_2017.png) | ![2018年](wordcloud_2018.png) | ![2019年](wordcloud_2019.png) |
-| **2017年** | **2018年** | **2019年** |
+| ![2017](wordcloud_2017.png) | ![2018](wordcloud_2018.png) | ![2019](wordcloud_2019.png) |
+| **2017** | **2018** | **2019** |
 | :---: | :---: | :---: |
 
-| ![2020年](wordcloud_2020.png) | ![2021年](wordcloud_2021.png) | ![2022年](wordcloud_2022.png) |
-| **2020年** | **2021年** | **2022年** |
+| ![2020](wordcloud_2020.png) | ![2021](wordcloud_2021.png) | ![2022](wordcloud_2022.png) |
+| **2020** | **2021** | **2022** |
 | :---: | :---: | :---: |
 
-| ![2023年](wordcloud_2023.png) | ![2024年](wordcloud_2024.png) | ![2025年](wordcloud_2025.png) |
-| **2023年** | **2024年** | **2025年** |
+| ![2023](wordcloud_2023.png) | ![2024](wordcloud_2024.png) | ![2025](wordcloud_2025.png) |
+| **2023** | **2024** | **2025** |
 | :---: | :---: | :---: |
 
 ---
 
-## ⚙️ 分析技术规格
+## ⚙️ Technical Specifications
 
-**核心参数配置**:
-- 分词引擎: jieba (精确模式) + 122个自定义短语词典
-- TF-IDF参数: min_df=1, max_df=0.98
-- **N-gram长度**: 1-4 (支持单字词、双字词、三字词、四字成语等)
-- 停用词库: 内置76个 + 自定义扩展
-- 中英混合: 智能识别并保留英文术语
-- 可视化: 科学期刊配色 + 300 DPI高分辨率输出
+**Core Configuration Parameters**:
+- Tokenization Engine: jieba (precise mode) + 122 custom phrase dictionary entries
+- TF-IDF Parameters: min_df=1, max_df=0.98
+- **N-gram Length**: 1-4 (supporting single chars, words, phrases, four-character idioms)
+- Stopwords Library: Built-in 76 + custom extensions
+- Mixed Chinese-English: Intelligent recognition and preservation of English technical terms
+- Visualization: Scientific journal color schemes + 300 DPI high-resolution output
 
-**语言结构分析**:
-- 单字词: 282 个 (有意义汉字保留)
-- 双字词: 30963 个 (常用词汇)
-- 三字词: 7413 个 (俗语、技术术语)
-- 四字词: 4063 个 (成语、复合概念)
-- 英文词: 2075 个 (技术术语保留)
-- 复合词: 691697 个 (N-gram组合)
+**Linguistic Structure Analysis**:
+- Single Characters: 282 tokens (meaningful Chinese characters retained)
+- Two-Character Words: 30,963 tokens (common vocabulary)
+- Three-Character Phrases: 7,413 tokens (colloquialisms, technical terms)
+- Four-Character Idioms: 4,063 tokens (idioms, compound concepts)
+- Multi-Character Terms: 208 tokens (complex technical terminology)
+- English Words: 2,075 tokens (technical terms preserved)
+- Compound N-grams: 691,697 tokens (intelligent n-gram combinations)
+- Technical Terms: 61 tokens (domain-specific vocabulary)
+- Classical Idioms: 3,524 tokens (traditional four-character expressions)
 
-**质量控制**:
-- ✅ 单字词语义筛选 (保留有意义汉字)
-- ✅ N-gram语义连贯性检查
-- ✅ Zipf定律符合度验证
-- ✅ 多维度统计交叉验证
+**Quality Assurance**:
+- ✅ Semantic filtering for single-character words (meaningful Chinese characters retained)
+- ✅ N-gram semantic coherence validation
+- ✅ Zipf's Law compliance verification
+- ✅ Multi-dimensional statistical cross-validation
+- ✅ English-Chinese mixed content intelligent processing
+- ✅ Technical terminology preservation and classification
 
 ---
 
-*📋 报告生成时间: 2025-08-29 03:13:43*
-*🔧 分析引擎: 中文语料分析系统 v2.0*
-*📁 数据源: ../Wechat-Backup/文不加点的张衔瑜*
+*📋 Report Generated: 2025-08-29 03:21:19*
+*🔧 Analysis Engine: Advanced Chinese Linguistic Analysis System v3.0*
+*📁 Data Source: ../Wechat-Backup/文不加点的张衔瑜*
+*🌐 Language Support: Comprehensive Chinese (1-4 character structures) + English Technical Terms*

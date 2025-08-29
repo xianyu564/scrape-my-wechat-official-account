@@ -1,6 +1,7 @@
 """
-中文分词与文本清洗模块 - 增强版
-支持复杂中文语言结构：单字词、双字词、三字词、成语、多字短语、中英混合
+Advanced Chinese Tokenization and Text Processing Module
+Comprehensive support for Chinese linguistic structures: single characters, two-character words, 
+three-character phrases, idioms, multi-character phrases, and Chinese-English mixed content.
 """
 
 import os
@@ -19,66 +20,70 @@ from tqdm import tqdm
 
 
 class ChineseTokenizer:
-    """增强版中文分词器 - 支持复杂语言结构分析"""
+    """Advanced Chinese Tokenizer - Comprehensive Linguistic Structure Support"""
     
     def __init__(self, userdict_path: Optional[str] = None, 
                  stopwords_path: Optional[str] = None,
                  extra_stopwords: Optional[List[str]] = None,
                  cache_dir: str = "analysis/.cache",
-                 phrase_dict_path: str = "../analysis/assets/chinese_phrases.txt"):
+                 phrase_dict_path: str = "analysis/assets/chinese_phrases.txt"):
         """
-        初始化增强版分词器
+        Initialize Advanced Chinese Tokenizer
         
         Args:
-            userdict_path: 用户词典路径
-            stopwords_path: 停用词文件路径  
-            extra_stopwords: 额外停用词列表
-            cache_dir: 缓存目录
-            phrase_dict_path: 中文短语词典路径
+            userdict_path: Path to user dictionary
+            stopwords_path: Path to stopwords file  
+            extra_stopwords: Additional stopwords list
+            cache_dir: Cache directory
+            phrase_dict_path: Chinese phrases dictionary path
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # 加载中文短语词典（增强词汇识别）
+        # Load Chinese phrase dictionary (enhance vocabulary recognition)
         self.phrase_dict = self._load_phrase_dict(phrase_dict_path)
-        print(f"已加载中文短语词典: {len(self.phrase_dict)} 个短语")
+        print(f"✅ Loaded Chinese phrase dictionary: {len(self.phrase_dict)} phrases")
         
-        # 加载用户词典
+        # Load user dictionary
         if userdict_path and os.path.exists(userdict_path):
             jieba.load_userdict(userdict_path)
-            print(f"已加载用户词典: {userdict_path}")
+            print(f"✅ Loaded user dictionary: {userdict_path}")
         
-        # 将短语词典加载到jieba
+        # Load phrase dictionary into jieba
         self._load_phrases_to_jieba()
         
-        # 加载停用词
+        # Load stopwords
         self.stopwords = self._load_stopwords(stopwords_path, extra_stopwords)
-        print(f"已加载停用词: {len(self.stopwords)} 个")
+        print(f"✅ Loaded stopwords: {len(self.stopwords)} words")
         
-        # 设置 jieba 为精确模式
+        # Configure jieba for precise mode
         try:
-            jieba.enable_paddle()  # 使用 paddle 模式提高准确率
-            print("✅ 启用 Paddle 精确分词模式")
+            jieba.enable_paddle()  # Use paddle mode for better accuracy
+            print("✅ Enabled Paddle precise tokenization mode")
         except:
-            # 如果 paddle 不可用，使用默认模式
-            warnings.warn("Paddle 模式不可用，使用默认分词模式")
+            # Fallback to default mode if paddle is not available
+            warnings.warn("Paddle mode unavailable, using default tokenization mode")
             pass
         
-        # 统计信息
+        # Statistical tracking
         self.stats = {
             'total_tokens': 0,
             'single_char_tokens': 0,
+            'two_char_tokens': 0,
+            'three_char_tokens': 0,
+            'four_char_tokens': 0,
             'multi_char_tokens': 0,
             'english_tokens': 0,
-            'phrase_tokens': 0
+            'phrase_tokens': 0,
+            'ngram_tokens': 0
         }
         
     def _load_phrase_dict(self, phrase_dict_path: str) -> Dict[str, int]:
-        """加载中文短语词典"""
+        """Load Chinese phrase dictionary"""
         phrase_dict = {}
         
         if not os.path.exists(phrase_dict_path):
-            print(f"⚠️ 短语词典文件不存在: {phrase_dict_path}")
+            print(f"⚠️ Phrase dictionary file not found: {phrase_dict_path}")
             return phrase_dict
         
         try:
@@ -95,21 +100,21 @@ class ChineseTokenizer:
                             freq = int(parts[1])
                             phrase_dict[phrase] = freq
                         except ValueError:
-                            # 如果频率不是数字，设为默认值
+                            # If frequency is not a number, set default value
                             phrase_dict[phrase] = 100
                     elif len(parts) == 1:
-                        # 只有短语没有频率
+                        # Only phrase without frequency
                         phrase_dict[parts[0]] = 100
         except Exception as e:
-            warnings.warn(f"加载短语词典失败: {e}")
+            warnings.warn(f"Failed to load phrase dictionary: {e}")
         
         return phrase_dict
     
     def _load_phrases_to_jieba(self):
-        """将短语词典加载到jieba分词器"""
+        """Load phrase dictionary into jieba tokenizer"""
         for phrase, freq in self.phrase_dict.items():
             jieba.add_word(phrase, freq=freq)
-        print(f"✅ 已将 {len(self.phrase_dict)} 个短语加载到jieba分词器")
+        print(f"✅ Loaded {len(self.phrase_dict)} phrases into jieba tokenizer")
 
     def _load_stopwords(self, stopwords_path: Optional[str], 
                        extra_stopwords: Optional[List[str]]) -> Set[str]:
@@ -147,60 +152,60 @@ class ChineseTokenizer:
         
         return stopwords
     
-    def tokenize(self, text: str, chinese_only: bool = True, 
-                 ngram_max: int = 1, preserve_english: bool = True) -> List[str]:
+    def tokenize(self, text: str, chinese_only: bool = False, 
+                 ngram_max: int = 4, preserve_english: bool = True) -> List[str]:
         """
-        增强版文本分词 - 支持复杂中文语言结构
+        Advanced Text Tokenization - Support for Complex Chinese Linguistic Structures
         
         Args:
-            text: 输入文本
-            chinese_only: 是否只保留中文 (False时保留中英混合)
-            ngram_max: 最大 n-gram 长度
-            preserve_english: 是否保留英文词汇
+            text: Input text
+            chinese_only: Whether to keep only Chinese (False to keep Chinese-English mixed)
+            ngram_max: Maximum n-gram length (1-4 supported for single chars, words, phrases, idioms)
+            preserve_english: Whether to preserve English vocabulary
         
         Returns:
-            List[str]: 分词结果
+            List[str]: Tokenization results with comprehensive linguistic analysis
         """
         if not text:
             return []
         
-        # 检查缓存
+        # Check cache
         cache_key = self._get_cache_key(text, chinese_only, ngram_max, preserve_english)
         cached_result = self._load_cache(cache_key)
         if cached_result is not None:
             return cached_result
         
-        # 预处理文本
+        # Preprocess text
         text = self._preprocess_text(text)
         
-        # 第一步：基础jieba分词（已加载短语词典）
+        # Step 1: Basic jieba tokenization (with loaded phrase dictionary)
         words = jieba.lcut(text, cut_all=False)
         
-        # 第二步：增强过滤和分类
+        # Step 2: Enhanced filtering and classification for different word types
         tokens = []
         for word in words:
             word = word.strip()
             if not word:
                 continue
             
-            # 分类处理不同类型的词汇
+            # Classify and process different types of vocabulary
             processed_word = self._process_word(
                 word, chinese_only, preserve_english)
             
             if processed_word:
                 tokens.extend(processed_word if isinstance(processed_word, list) else [processed_word])
         
-        # 第三步：统计驱动的短语识别
+        # Step 3: Statistical-driven phrase recognition
         tokens = self._enhance_with_statistical_phrases(tokens, text)
         
-        # 第四步：生成智能N-gram
+        # Step 4: Generate intelligent N-grams (1-4)
         if ngram_max > 1:
-            tokens = self._generate_intelligent_ngrams(tokens, ngram_max)
+            tokens = self._generate_comprehensive_ngrams(tokens, ngram_max)
         
-        # 更新统计信息
-        self._update_stats(tokens)
+        # Update statistical tracking
+        self._update_comprehensive_stats(tokens)
         
-        # 缓存结果
+        # Cache results
         self._save_cache(cache_key, tokens)
         
         return tokens
@@ -469,20 +474,22 @@ class ChineseTokenizer:
         }
         return char in meaningful_chars
     
-    def _generate_intelligent_ngrams(self, tokens: List[str], max_n: int) -> List[str]:
-        """智能N-gram生成 - 基于语言学规律和统计特征"""
+    def _generate_comprehensive_ngrams(self, tokens: List[str], max_n: int) -> List[str]:
+        """Comprehensive N-gram Generation (1-4) - Based on Linguistic Rules and Statistical Features"""
         result = tokens.copy()
         
         for n in range(2, max_n + 1):
+            ngrams_added = 0
             for i in range(len(tokens) - n + 1):
                 ngram_tokens = tokens[i:i+n]
                 
-                # 智能验证N-gram的价值
+                # Intelligent validation of N-gram value
                 if self._is_valuable_ngram(ngram_tokens, n):
-                    # 智能连接策略
+                    # Intelligent connection strategy
                     ngram = self._create_intelligent_ngram(ngram_tokens)
-                    if ngram:
+                    if ngram and ngram not in result:  # Avoid duplicates
                         result.append(ngram)
+                        ngrams_added += 1
         
         return result
     
@@ -570,20 +577,34 @@ class ChineseTokenizer:
             
             return '_'.join(result_parts) if len(result_parts) > 1 else result_parts[0]
     
-    def _update_stats(self, tokens: List[str]):
-        """更新分词统计信息"""
+    def _update_comprehensive_stats(self, tokens: List[str]):
+        """Update comprehensive tokenization statistics"""
         self.stats['total_tokens'] += len(tokens)
         
         for token in tokens:
-            if len(token) == 1 and self._is_chinese(token):
-                self.stats['single_char_tokens'] += 1
-            elif self._is_chinese(token):
-                self.stats['multi_char_tokens'] += 1
-            elif self._is_pure_english(token):
+            # Classify by character length and type
+            if self._is_pure_english(token):
                 self.stats['english_tokens'] += 1
+            elif self._is_chinese(token):
+                char_count = len([c for c in token if self._is_chinese(c)])
+                if char_count == 1:
+                    self.stats['single_char_tokens'] += 1
+                elif char_count == 2:
+                    self.stats['two_char_tokens'] += 1
+                elif char_count == 3:
+                    self.stats['three_char_tokens'] += 1
+                elif char_count == 4:
+                    self.stats['four_char_tokens'] += 1
+                else:
+                    self.stats['multi_char_tokens'] += 1
             
+            # Check if it's a phrase from dictionary
             if token in self.phrase_dict:
                 self.stats['phrase_tokens'] += 1
+            
+            # Check if it's an n-gram (contains underscore)
+            if '_' in token:
+                self.stats['ngram_tokens'] += 1
     
     def get_stats(self) -> Dict[str, int]:
         """获取分词统计信息"""
