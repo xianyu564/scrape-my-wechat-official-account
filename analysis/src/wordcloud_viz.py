@@ -236,7 +236,8 @@ def create_wordcloud(word_freq: Dict[str, int],
                      color='#2C3E50', family='serif')
         
         # 添加优雅的统计信息标注
-        stats_text = f"词汇量: {len(word_freq):,} | 总词频: {sum(word_freq.values()):,} | 词汇密度: {len(word_freq)/sum(word_freq.values()):.3f}"
+        total_freq = sum(word_freq.values())
+        stats_text = f"词汇量: {len(word_freq):,} | 总词频: {total_freq:,} | 词汇密度: {len(word_freq)/total_freq:.3f}"
         plt.figtext(0.02, 0.02, stats_text, fontsize=11, 
                    color='#34495E', style='italic',
                    bbox=dict(boxstyle="round,pad=0.4", facecolor="white", 
