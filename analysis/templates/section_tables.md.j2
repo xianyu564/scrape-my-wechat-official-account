@@ -1,0 +1,53 @@
+## {{ section_title }}
+
+{% if description %}
+{{ description }}
+{% endif %}
+
+{% if tables %}
+{% for table in tables %}
+### {{ table.title }}
+
+| Term | Frequency | Score |
+|------|-----------|-------|
+{% for row in table.rows %}
+| {{ row.term }} | {{ row.frequency:,}} | {{ "%.3f"|format(row.score) }} |
+{% endfor %}
+
+{% endfor %}
+{% endif %}
+
+{% if metrics %}
+### Key Metrics
+
+{% for metric in metrics %}
+- **{{ metric.name }}**: {{ metric.value }}{% if metric.unit %} {{ metric.unit }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if yearly_data %}
+### By Year Analysis
+
+{% for year, data in yearly_data.items() %}
+#### {{ year }}
+
+{% if data.top_terms %}
+**Top Terms**: {{ ", ".join(data.top_terms[:5]) }}
+
+{% endif %}
+{% if data.metrics %}
+{% for metric in data.metrics %}
+- {{ metric.name }}: {{ metric.value }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if notes %}
+### Notes
+
+{% for note in notes %}
+- {{ note }}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,107 @@
+# 技术术语词典 - 保留混合记号和技术术语
+# 包含各种技术术语、品牌名称、模型名称等
+# jieba 格式：词语 词频 词性（可选）
+
+# AI/ML 相关术语
+AIGC_2025 100
+GPT-4 100
+ChatGPT-4o-mini 100
+ResNet50 100
+BERT 100
+Transformer 100
+CNN 100
+RNN 100
+LSTM 100
+GAN 100
+VAE 100
+YOLO 100
+
+# 生物医学术语
+IL-6 100
+STAT3 100
+COVID-19 100
+SARS-CoV-2 100
+mRNA 100
+DNA 100
+RNA 100
+PCR 100
+RT-PCR 100
+ELISA 100
+
+# 编程相关
+camelCase 100
+snake_case 100
+kebab-case 100
+PascalCase 100
+API 100
+REST 100
+GraphQL 100
+JSON 100
+XML 100
+HTTP 100
+HTTPS 100
+TCP/IP 100
+
+# 技术品牌和平台
+GitHub 100
+GitLab 100
+Stack_Overflow 100
+StackOverflow 100
+TensorFlow 100
+PyTorch 100
+scikit-learn 100
+pandas 100
+numpy 100
+matplotlib 100
+
+# 编程语言和框架
+Python 100
+JavaScript 100
+TypeScript 100
+React.js 100
+Vue.js 100
+Node.js 100
+Express.js 100
+Django 100
+Flask 100
+Spring_Boot 100
+
+# 云服务和技术
+AWS 100
+Azure 100
+Google_Cloud 100
+Docker 100
+Kubernetes 100
+MySQL 100
+PostgreSQL 100
+MongoDB 100
+Redis 100
+Elasticsearch 100
+
+# 版本号和标识符
+v1.0.0 100
+v2.1.3 100
+alpha-1.0 100
+beta-2.0 100
+rc-1.0 100
+Windows_10 100
+macOS_13 100
+Ubuntu_22.04 100
+iOS_16 100
+Android_13 100
+
+# 其他技术术语
+5G 100
+Wi-Fi_6 100
+Bluetooth_5.0 100
+USB-C 100
+HDMI_2.1 100
+4K 100
+8K 100
+HDR 100
+VR 100
+AR 100
+MR 100
+IoT 100
+IIoT 100
+Edge_Computing 100

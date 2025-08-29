@@ -11,9 +11,9 @@
 | #003 | 语义搜索基础设施 | 🟡 中 | `feature/semantic-search-rag` | ✅ 已创建 |
 | #004 | 用户界面与交互体验 | 🟡 中 | `feature/user-interface` | 📋 模板已创建 |
 | #005 | 测试框架与质量保证 | 🟡 中 | `feature/testing-framework` | 📋 模板已创建 |
-| #006 | 性能优化与扩展性 | 🟡 中 | `feature/performance-optimization` | 📋 待创建 |
-| #007 | 配置管理与环境设置 | 🟢 低 | `feature/config-management` | 📋 待创建 |
-| #008 | 文档完善与用户指南 | 🟡 中 | `feature/documentation-enhancement` | 📋 待创建 |
+| #006 | 性能优化与扩展性 | 🟡 中 | `feature/performance-optimization` | 📋 模板已创建 |
+| #007 | 配置管理与环境设置 | 🟢 低 | `feature/config-management` | 📋 模板已创建 |
+| #008 | 文档完善与用户指南 | 🟡 中 | `feature/documentation-enhancement` | 📋 模板已创建 |
 
 ## 🔄 已完成的解决分支
 
@@ -104,7 +104,14 @@ python scripts/embed_corpus.py --input Wechat-Backup --output artifacts/ \
 
 ## 📋 Issue 模板系统
 
-所有问题都配备了标准化的 GitHub Issue 模板，位于 `.github/ISSUE_TEMPLATES/` 目录：
+所有问题都配备了标准化的 GitHub Issue 模板，位于 `.github/ISSUE_TEMPLATE/` 目录：
+
+### 已创建的模板
+- `bug_report.md` - Bug报告模板
+- `feature_request.md` - 功能请求模板  
+- `performance-optimization.md` - 性能优化问题模板
+- `config-management.md` - 配置管理问题模板
+- `documentation-enhancement.md` - 文档完善问题模板
 
 ### 模板内容结构
 - 🎯 **问题描述** - 明确的问题定义
