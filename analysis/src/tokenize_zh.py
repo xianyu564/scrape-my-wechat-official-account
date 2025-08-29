@@ -32,7 +32,7 @@ class ChineseTokenizer:
             cache_dir: 缓存目录
         """
         self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # 加载用户词典
         if userdict_path and os.path.exists(userdict_path):
