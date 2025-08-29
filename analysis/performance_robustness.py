@@ -201,7 +201,8 @@ def optimize_memory_usage():
         if hasattr(gc, 'set_threshold'):
             # Temporarily adjust GC thresholds for more aggressive collection
             old_thresholds = gc.get_threshold()
-            gc.set_threshold(100, 10, 10)
+            # Use less aggressive GC thresholds (Python default: 700, 10, 10)
+            gc.set_threshold(700, 10, 10)
             gc.collect()
             gc.set_threshold(*old_thresholds)
     except Exception:
