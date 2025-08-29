@@ -201,7 +201,7 @@ def create_zipf_panels(frequencies: Counter,
     ax4.set_xlabel('Frequency')
     ax4.set_ylabel('Number of Terms')
     ax4.set_title('Frequency Distribution')
-    ax4.set_yscale('log')
+    ax4.set_yscale('symlog', linthresh=1)
     ax4.grid(True, alpha=0.3)
     
     # Add statistics text
