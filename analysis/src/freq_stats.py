@@ -274,10 +274,7 @@ def zipf_plot_enhanced(freq_data: pd.DataFrame, output_path: str,
     
     # 方法2: 稳健回归（抗异常值）
     try:
-        from scipy.stats import linregress
-        slope_robust, intercept_robust, r_value, p_value, std_err = linregress(log_ranks, log_freqs)
-        r_squared = r_value ** 2
-    except:
+    except (ImportError, ValueError, TypeError):
         r_squared = 1 - (np.sum((log_freqs - (slope * log_ranks + intercept)) ** 2) / 
                         np.sum((log_freqs - np.mean(log_freqs)) ** 2))
         slope_robust, intercept_robust = slope, intercept
