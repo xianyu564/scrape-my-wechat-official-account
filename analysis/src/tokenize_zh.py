@@ -25,7 +25,7 @@ class ChineseTokenizer:
                  stopwords_path: Optional[str] = None,
                  extra_stopwords: Optional[List[str]] = None,
                  cache_dir: str = "analysis/.cache",
-                 phrase_dict_path: str = "analysis/assets/chinese_phrases.txt"):
+                 phrase_dict_path: str = "../analysis/assets/chinese_phrases.txt"):
         """
         初始化增强版分词器
         

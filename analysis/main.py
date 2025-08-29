@@ -439,11 +439,23 @@ def generate_markdown_report(
         f.write("## ⚙️ 分析技术规格\n\n")
         
         f.write("**核心参数配置**:\n")
-        f.write(f"- 分词引擎: jieba (精确模式)\n")
+        f.write(f"- 分词引擎: jieba (精确模式) + 122个自定义短语词典\n")
         f.write(f"- TF-IDF参数: min_df={analysis_params.get('min_df', 'N/A')}, max_df={analysis_params.get('max_df', 'N/A')}\n")
-        f.write(f"- N-gram范围: 1-{analysis_params.get('ngram_max', 'N/A')}\n")
+        f.write(f"- **N-gram长度**: 1-{analysis_params.get('ngram_max', 'N/A')} (支持单字词、双字词、三字词、四字成语等)\n")
         f.write(f"- 停用词库: 内置76个 + 自定义扩展\n")
-        f.write(f"- 可视化: 科学期刊配色 + 高分辨率输出\n\n")
+        f.write(f"- 中英混合: 智能识别并保留英文术语\n")
+        f.write(f"- 可视化: 科学期刊配色 + 300 DPI高分辨率输出\n\n")
+        
+        # 添加N-gram统计信息
+        if 'ngram_stats' in stats_summary:
+            ngram_stats = stats_summary['ngram_stats']
+            f.write("**语言结构分析**:\n")
+            f.write(f"- 单字词: {ngram_stats.get('单字词', 0)} 个 (有意义汉字保留)\n")
+            f.write(f"- 双字词: {ngram_stats.get('双字词', 0)} 个 (常用词汇)\n") 
+            f.write(f"- 三字词: {ngram_stats.get('三字词', 0)} 个 (俗语、技术术语)\n")
+            f.write(f"- 四字词: {ngram_stats.get('四字词', 0)} 个 (成语、复合概念)\n")
+            f.write(f"- 英文词: {ngram_stats.get('英文词', 0)} 个 (技术术语保留)\n")
+            f.write(f"- 复合词: {ngram_stats.get('复合词', 0)} 个 (N-gram组合)\n\n")
         
         f.write("**质量控制**:\n")
         f.write("- ✅ 单字词语义筛选 (保留有意义汉字)\n")
@@ -472,8 +484,8 @@ def main():
     # =================================================================
     
     # 必需参数
-    ROOT_DIR = "Wechat-Backup/文不加点的张衔瑜"  # 语料根目录
-    OUTPUT_DIR = "analysis/out"                    # 输出目录
+    ROOT_DIR = "../Wechat-Backup/文不加点的张衔瑜"  # 语料根目录
+    OUTPUT_DIR = "out"                         # 输出目录
     
     # 运行模式选择
     RUN_ANALYSIS = True       # 是否运行第一步（理论分析）
@@ -487,10 +499,10 @@ def main():
         'years': None,                # ["2021", "2022", "2023"] 或 None
         
         # 分词参数 - 优化以支持复杂中文语言结构
-        'min_df': 3,                  # TF-IDF最小文档频率 (降低以保留更多有意义词汇)
-        'max_df': 0.90,               # TF-IDF最大文档频率 (提高以保留常用词)
-        'ngram_max': 3,               # 最大n-gram长度 (增加以支持三字词、成语等)
-        'topk': 100,                  # 每年返回的关键词数量 (增加以获得更丰富分析)
+        'min_df': 1,                  # TF-IDF最小文档频率 (降低以保留更多有意义词汇)
+        'max_df': 0.98,               # TF-IDF最大文档频率 (提高以保留常用词)
+        'ngram_max': 4,               # 最大n-gram长度 (增加以支持三字词、四字成语、更长技术术语等)
+        'topk': 150,                  # 每年返回的关键词数量 (增加以获得更丰富分析)
         
         # 自定义文件路径  
         'userdict_path': None,        # 自定义词典文件

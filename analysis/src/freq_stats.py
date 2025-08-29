@@ -25,6 +25,7 @@ NATURE_COLORS = {
     'accent': '#DC143C',       # 深红色
     'success': '#039BE5',      # 浅蓝色
     'warning': '#FFA726',      # 橙色
+    'info': '#9C27B0',         # 紫色
     'background': '#F8F9FA',   # 浅灰背景
     'text': '#2C3E50',         # 深灰文字
     'grid': '#E9ECEF'          # 网格色
@@ -478,7 +479,7 @@ def get_stats_summary(freq_overall: pd.DataFrame,
                      freq_by_year: pd.DataFrame,
                      tfidf_by_year: pd.DataFrame) -> Dict:
     """
-    获取统计摘要信息
+    获取统计摘要信息 - 增强版，包含N-gram分析
     
     Args:
         freq_overall: 整体词频
@@ -495,6 +496,10 @@ def get_stats_summary(freq_overall: pd.DataFrame,
         summary['total_unique_words'] = len(freq_overall)
         summary['total_word_freq'] = freq_overall['freq'].sum()
         summary['top_words'] = freq_overall.head(10)['word'].tolist()
+        
+        # N-gram 结构分析
+        ngram_stats = analyze_ngram_structure(freq_overall['word'].tolist())
+        summary['ngram_stats'] = ngram_stats
     
     # 年度统计
     if not freq_by_year.empty:
@@ -509,3 +514,52 @@ def get_stats_summary(freq_overall: pd.DataFrame,
         summary['top_tfidf_words'] = tfidf_by_year.groupby('year').head(5).groupby('year')['word'].apply(list).to_dict()
     
     return summary
+
+
+def analyze_ngram_structure(words: List[str]) -> Dict[str, int]:
+    """
+    分析词汇的N-gram结构分布
+    
+    Args:
+        words: 词汇列表
+    
+    Returns:
+        Dict: N-gram结构统计
+    """
+    import re
+    
+    stats = {
+        '单字词': 0,
+        '双字词': 0, 
+        '三字词': 0,
+        '四字词': 0,
+        '长词汇': 0,
+        '英文词': 0,
+        '复合词': 0  # 包含下划线的N-gram组合
+    }
+    
+    for word in words:
+        # 检查是否为复合词(N-gram)
+        if '_' in word:
+            stats['复合词'] += 1
+            continue
+            
+        # 检查是否为纯英文
+        if re.match(r'^[a-zA-Z]+$', word):
+            stats['英文词'] += 1
+            continue
+            
+        # 按字符长度分类中文词汇
+        char_length = len(word)
+        if char_length == 1:
+            stats['单字词'] += 1
+        elif char_length == 2:
+            stats['双字词'] += 1
+        elif char_length == 3:
+            stats['三字词'] += 1
+        elif char_length == 4:
+            stats['四字词'] += 1
+        else:
+            stats['长词汇'] += 1
+    
+    return stats
