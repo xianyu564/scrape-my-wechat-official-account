@@ -130,15 +130,20 @@ class ChineseTokenizer:
             if word in self.stopwords:
                 continue
             
-            # 长度过滤
-            if len(word) < 2:
+            # 智能长度过滤：对于中文，允许有意义的单字词
+            if len(word) < 1:
                 continue
+            
+            # 单字词特殊处理：只保留有意义的中文单字
+            if len(word) == 1 and chinese_only:
+                if not self._is_meaningful_single_char(word):
+                    continue
                 
             tokens.append(word)
         
-        # 生成 n-gram
+        # 生成 n-gram (改进逻辑)
         if ngram_max > 1:
-            tokens = self._generate_ngrams(tokens, ngram_max)
+            tokens = self._generate_ngrams_improved(tokens, ngram_max)
         
         # 缓存结果
         self._save_cache(cache_key, tokens)
@@ -211,8 +216,31 @@ class ChineseTokenizer:
         """判断是否为中文"""
         return bool(re.search(r'[\u4e00-\u9fff]', word))
     
+    def _is_meaningful_single_char(self, char: str) -> bool:
+        """判断单字是否有意义，值得保留"""
+        # 保留常见的有意义单字
+        meaningful_chars = {
+            # 人物称谓
+            '人', '我', '你', '他', '她', '它', '谁', '家', '子', '父', '母', '友',
+            # 时间空间
+            '年', '月', '日', '时', '天', '夜', '今', '昨', '明', '前', '后', '上', '下', '左', '右', '东', '西', '南', '北',
+            # 情感心理
+            '心', '情', '爱', '喜', '怒', '忧', '思', '恐', '惊', '痛', '乐', '悲', '哭', '笑',
+            # 抽象概念
+            '道', '理', '义', '礼', '智', '信', '仁', '德', '善', '恶', '真', '假', '美', '丑',
+            # 自然元素
+            '天', '地', '山', '水', '火', '木', '金', '土', '风', '雨', '雪', '云', '海', '河', '花', '草', '树',
+            # 动作状态
+            '走', '跑', '飞', '坐', '立', '卧', '看', '听', '说', '读', '写', '学', '教', '做', '来', '去', '给', '拿',
+            # 数量单位
+            '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '百', '千', '万', '亿',
+            # 其他常用字
+            '大', '小', '多', '少', '好', '坏', '新', '旧', '长', '短', '高', '低', '快', '慢', '远', '近'
+        }
+        return char in meaningful_chars
+    
     def _generate_ngrams(self, tokens: List[str], max_n: int) -> List[str]:
-        """生成 n-gram"""
+        """生成 n-gram（旧版本，保留兼容性）"""
         result = tokens.copy()
         
         for n in range(2, max_n + 1):
@@ -221,6 +249,46 @@ class ChineseTokenizer:
                 result.append(ngram)
         
         return result
+    
+    def _generate_ngrams_improved(self, tokens: List[str], max_n: int) -> List[str]:
+        """改进的 n-gram 生成，适用于中文分析"""
+        result = tokens.copy()
+        
+        for n in range(2, max_n + 1):
+            for i in range(len(tokens) - n + 1):
+                # 构建n-gram时考虑语义连贯性
+                ngram_tokens = tokens[i:i+n]
+                
+                # 对于中文，检查是否是有意义的组合
+                if self._is_meaningful_ngram(ngram_tokens):
+                    # 使用适当的连接方式
+                    if all(len(token) == 1 for token in ngram_tokens):
+                        # 全部是单字，直接连接
+                        ngram = ''.join(ngram_tokens)
+                    else:
+                        # 包含多字词，用下划线连接保持可读性
+                        ngram = '_'.join(ngram_tokens)
+                    
+                    result.append(ngram)
+        
+        return result
+    
+    def _is_meaningful_ngram(self, tokens: List[str]) -> bool:
+        """判断n-gram组合是否有意义"""
+        if not tokens or len(tokens) < 2:
+            return False
+        
+        # 基本过滤：避免重复词
+        if len(set(tokens)) != len(tokens):
+            return False
+        
+        # 避免全部都是功能词的组合
+        function_words = {'的', '了', '在', '是', '有', '和', '就', '不', '都', '一', '也', '很', '到'}
+        if all(token in function_words for token in tokens):
+            return False
+        
+        # 保留至少包含一个实词的组合
+        return True
     
     def _get_cache_key(self, text: str, chinese_only: bool, ngram_max: int) -> str:
         """生成缓存键"""

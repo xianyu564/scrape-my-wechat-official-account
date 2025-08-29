@@ -69,11 +69,11 @@ def create_heart_mask(size: Tuple[int, int] = (800, 800)) -> np.ndarray:
     return np.array(img)
 
 
-def cheerful_color_func(word: str, font_size: int, position: Tuple[int, int], 
-                       orientation: int, random_state: Optional[int] = None,
-                       **kwargs) -> str:
+def scientific_color_func(word: str, font_size: int, position: Tuple[int, int], 
+                         orientation: int, random_state: Optional[int] = None,
+                         **kwargs) -> str:
     """
-    愉悦配色函数 - 生成温暖明亮的颜色
+    科学研究风格配色函数 - 优雅、专业、符合学术审美
     
     Args:
         word: 词汇
@@ -87,43 +87,41 @@ def cheerful_color_func(word: str, font_size: int, position: Tuple[int, int],
     """
     np.random.seed(random_state)
     
-    # 定义愉悦色彩调色板
-    cheerful_colors = [
-        '#FF6B6B',  # 珊瑚红
-        '#4ECDC4',  # 青绿色
-        '#45B7D1',  # 天蓝色
-        '#96CEB4',  # 薄荷绿
-        '#FFEAA7',  # 淡黄色
-        '#DDA0DD',  # 梅花紫
-        '#98D8C8',  # 薄荷绿
-        '#F7DC6F',  # 香蕉黄
-        '#BB8FCE',  # 淡紫色
-        '#85C1E9',  # 浅蓝色
-        '#F8C471',  # 桃色
-        '#82E0AA'   # 浅绿色
-    ]
+    # 科学研究专用配色方案 - 基于Nature, Science等期刊的配色
+    scientific_palette = {
+        'primary': ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'],      # 主色调：蓝、紫、橙、红
+        'secondary': ['#5D737E', '#64A6BD', '#90A959', '#D07A56'],    # 次色调：灰蓝、亮蓝、绿、橘
+        'accent': ['#8E44AD', '#2980B9', '#27AE60', '#F39C12']        # 强调色：紫、蓝、绿、黄
+    }
     
-    # 根据字体大小选择颜色强度
-    if font_size > 50:
-        # 大字体用深色
-        color_intensity = 0.7
-    elif font_size > 30:
-        # 中字体用中等色
-        color_intensity = 0.8
+    # 根据字体大小确定颜色类别和饱和度
+    if font_size > 60:
+        # 超大字体：使用主色调，高饱和度
+        colors = scientific_palette['primary']
+        saturation = 0.9
+    elif font_size > 35:
+        # 大字体：使用次色调，中等饱和度
+        colors = scientific_palette['secondary'] 
+        saturation = 0.8
     else:
-        # 小字体用浅色
-        color_intensity = 0.9
+        # 小字体：使用强调色，适中饱和度
+        colors = scientific_palette['accent']
+        saturation = 0.7
     
-    # 随机选择基础颜色
-    base_color = np.random.choice(cheerful_colors)
+    # 基于词汇特征选择颜色（确保一致性）
+    word_hash = hash(word) % len(colors)
+    base_color = colors[word_hash]
     
-    # 转换为 RGB
+    # 转换为HSV进行亮度调整
     rgb = mcolors.hex2color(base_color)
+    hsv = mcolors.rgb_to_hsv(rgb)
     
-    # 调整亮度
-    rgb_adjusted = tuple(min(1.0, c * color_intensity) for c in rgb)
+    # 微调饱和度和亮度
+    hsv[1] = min(1.0, hsv[1] * saturation)  # 调整饱和度
+    hsv[2] = max(0.3, min(0.9, hsv[2] + np.random.normal(0, 0.1)))  # 轻微随机化亮度
     
-    # 转换回十六进制
+    # 转换回RGB和hex
+    rgb_adjusted = mcolors.hsv_to_rgb(hsv)
     return mcolors.rgb2hex(rgb_adjusted)
 
 
@@ -133,13 +131,13 @@ def create_wordcloud(word_freq: Dict[str, int],
                     mask_path: Optional[str] = None,
                     font_path: Optional[str] = None,
                     colormap: str = "viridis",
-                    width: int = 1200,
-                    height: int = 800,
+                    width: int = 1600,
+                    height: int = 1200,
                     background_color: str = "white",
                     max_words: int = 200,
-                    use_cheerful_colors: bool = True) -> bool:
+                    use_scientific_colors: bool = True) -> bool:
     """
-    生成词云图
+    生成高质量科学研究风格词云图
     
     Args:
         word_freq: 词频字典 {word: frequency}
@@ -147,12 +145,12 @@ def create_wordcloud(word_freq: Dict[str, int],
         title: 图片标题
         mask_path: 蒙版图片路径
         font_path: 中文字体路径
-        colormap: 颜色映射
+        colormap: 颜色映射（当不使用科学配色时）
         width: 图片宽度
         height: 图片高度
         background_color: 背景颜色
         max_words: 最大词数
-        use_cheerful_colors: 是否使用愉悦配色
+        use_scientific_colors: 是否使用科学研究配色
     
     Returns:
         bool: 是否成功生成
@@ -168,17 +166,20 @@ def create_wordcloud(word_freq: Dict[str, int],
             mask_img = Image.open(mask_path)
             mask = np.array(mask_img)
         
-        # 配置词云参数
+        # 配置词云参数 - 优化为高质量科学图表
         wc_params = {
             'width': width,
             'height': height,
             'background_color': background_color,
             'max_words': max_words,
-            'relative_scaling': 0.5,
-            'min_font_size': 12,
-            'max_font_size': 100,
-            'prefer_horizontal': 0.7,
-            'random_state': 42
+            'relative_scaling': 0.6,          # 增加相对缩放，层次更明显
+            'min_font_size': 14,              # 提高最小字体
+            'max_font_size': 120,             # 提高最大字体
+            'prefer_horizontal': 0.8,         # 更多水平文字，便于阅读
+            'random_state': 42,
+            'collocations': False,            # 避免词汇搭配重复
+            'include_numbers': False,         # 不包含纯数字
+            'normalize_plurals': False        # 保持中文原样
         }
         
         # 设置蒙版
@@ -189,9 +190,9 @@ def create_wordcloud(word_freq: Dict[str, int],
         if font_path and os.path.exists(font_path):
             wc_params['font_path'] = font_path
         
-        # 设置颜色
-        if use_cheerful_colors:
-            wc_params['color_func'] = cheerful_color_func
+        # 设置配色方案
+        if use_scientific_colors:
+            wc_params['color_func'] = scientific_color_func
         else:
             wc_params['colormap'] = colormap
         
@@ -201,27 +202,31 @@ def create_wordcloud(word_freq: Dict[str, int],
         # 生成词云
         wordcloud.generate_from_frequencies(word_freq)
         
-        # 创建图形
-        plt.figure(figsize=(width/100, height/100))
+        # 创建高质量图形
+        plt.figure(figsize=(width/100, height/100), dpi=150)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis('off')
         
-        # 添加标题
+        # 添加科学风格标题
         if title:
-            plt.title(title, fontsize=16, pad=20, fontweight='bold')
+            plt.title(title, fontsize=20, pad=30, fontweight='bold', 
+                     color='#2C3E50', family='serif')
         
-        # 添加统计信息
-        stats_text = f"词汇数: {len(word_freq)} | 总频次: {sum(word_freq.values()):,}"
-        plt.figtext(0.02, 0.02, stats_text, fontsize=10, 
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7))
+        # 添加优雅的统计信息标注
+        stats_text = f"词汇量: {len(word_freq):,} | 总词频: {sum(word_freq.values()):,} | 词汇密度: {len(word_freq)/sum(word_freq.values()):.3f}"
+        plt.figtext(0.02, 0.02, stats_text, fontsize=11, 
+                   color='#34495E', style='italic',
+                   bbox=dict(boxstyle="round,pad=0.4", facecolor="white", 
+                            edgecolor='#BDC3C7', alpha=0.9))
         
-        # 保存图片
+        # 保存高质量图片
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         plt.savefig(output_path, dpi=300, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+                   facecolor='white', edgecolor='none', 
+                   pad_inches=0.2)  # 添加小边距
         plt.close()
         
-        print(f"词云已保存: {output_path}")
+        print(f"🎨 高质量词云已保存: {output_path}")
         return True
         
     except Exception as e:
@@ -284,7 +289,7 @@ def generate_overall_wordcloud(freq_data: pd.DataFrame,
             title=title,
             mask_path=mask_path,
             font_path=font_path,
-            use_cheerful_colors=True
+            use_scientific_colors=True
         )
     except Exception as e:
         warnings.warn(f"生成整体词云失败: {e}")
@@ -350,7 +355,7 @@ def generate_yearly_wordclouds(freq_by_year: pd.DataFrame,
             title=title,
             mask_path=mask_path,
             font_path=font_path,
-            use_cheerful_colors=True
+            use_scientific_colors=True
         )
         
         if success:
