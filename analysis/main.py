@@ -316,7 +316,11 @@ def run_analysis(
     heaps_results = analyze_heaps_law(merged_corpus)
     
     print("🔤 Calculating lexical metrics...")
-    lexical_metrics = calculate_lexical_metrics(merged_corpus)
+    lexical_metrics = calculate_lexical_metrics(
+        merged_corpus, 
+        stopwords_zh=tokenizer.stopwords_zh if hasattr(tokenizer, 'stopwords_zh') else None,
+        stopwords_en=tokenizer.stopwords_en if hasattr(tokenizer, 'stopwords_en') else None
+    )
     
     print("📅 Analyzing year-over-year growth...")
     growth_data = get_year_over_year_growth(freq_by_year, topk=20)
