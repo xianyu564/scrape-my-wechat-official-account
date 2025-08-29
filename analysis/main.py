@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import pickle
+import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import warnings
@@ -18,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent / "pipeline"))
 
 # Import pipeline modules
 from corpus_io import load_corpus, read_text, get_corpus_stats, split_by_year
-from tokenize import MixedLanguageTokenizer
+from tokenizer import MixedLanguageTokenizer
 from ngrams import build_ngrams, get_ngram_stats
 from stats import (
     calculate_frequencies, calculate_frequencies_by_year, calculate_tfidf,
@@ -30,6 +31,117 @@ from viz import (
     create_yearly_comparison_chart, create_growth_chart
 )
 from report import write_report
+
+
+def print_and_save_config(config: Dict[str, Any], output_dir: str) -> None:
+    """
+    Print configuration to console and save to summary.json
+    """
+    print("=" * 70)
+    print("🔧 FINAL CONFIGURATION PARAMETERS")
+    print("=" * 70)
+    
+    # Print configuration
+    for section, params in config.items():
+        print(f"\n📋 {section.upper()}:")
+        if isinstance(params, dict):
+            for key, value in params.items():
+                print(f"  {key}: {value}")
+        else:
+            print(f"  {params}")
+    
+    print("=" * 70)
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save to summary.json
+    summary_path = os.path.join(output_dir, "summary.json")
+    summary_data = {"config": config}
+    
+    # Load existing summary if it exists
+    if os.path.exists(summary_path):
+        try:
+            with open(summary_path, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+            existing_data["config"] = config
+            summary_data = existing_data
+        except Exception:
+            pass  # Use new summary data if loading fails
+    
+    # Save updated summary
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        json.dump(summary_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"💾 Configuration saved to: {summary_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Parse command line arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Robust Chinese + Mixed-Language Linguistic Analysis",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python analysis/main.py --max-n 8 --collocation llr
+  python analysis/main.py --corpus ../Wechat-Backup --years 2022,2023
+  python analysis/main.py --tokenizer jieba --min-freq 3
+        """
+    )
+    
+    # Execution control
+    parser.add_argument('--analysis', action='store_true', default=None,
+                       help='Run analysis phase (default: True)')
+    parser.add_argument('--no-analysis', dest='analysis', action='store_false',
+                       help='Skip analysis phase')
+    parser.add_argument('--visualization', action='store_true', default=None,
+                       help='Run visualization phase (default: True)')
+    parser.add_argument('--no-visualization', dest='visualization', action='store_false',
+                       help='Skip visualization phase')
+    
+    # Data paths
+    parser.add_argument('--corpus', type=str,
+                       help='Corpus root directory')
+    parser.add_argument('--output', type=str,
+                       help='Output directory')
+    
+    # Analysis parameters
+    parser.add_argument('--max-n', type=int,
+                       help='Maximum n-gram length (default: 8)')
+    parser.add_argument('--min-freq', type=int,
+                       help='Minimum frequency for n-gram retention (default: 5)')
+    parser.add_argument('--collocation', choices=['pmi', 'llr'],
+                       help='Collocation method: pmi or llr (default: pmi)')
+    parser.add_argument('--pmi-threshold', type=float,
+                       help='PMI threshold for phrase validation (default: 3.0)')
+    parser.add_argument('--llr-threshold', type=float,
+                       help='LLR threshold for phrase validation (default: 10.83)')
+    
+    # Tokenizer parameters
+    parser.add_argument('--tokenizer', choices=['auto', 'pkuseg', 'jieba'],
+                       help='Tokenizer type (default: auto)')
+    
+    # Time filtering
+    parser.add_argument('--start-date', type=str,
+                       help='Start date filter (YYYY-MM-DD)')
+    parser.add_argument('--end-date', type=str,
+                       help='End date filter (YYYY-MM-DD)')
+    parser.add_argument('--years', type=str,
+                       help='Year filter (comma-separated, e.g., 2021,2022)')
+    
+    # Visualization parameters
+    parser.add_argument('--font-path', type=str,
+                       help='Path to Chinese font file')
+    parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm'],
+                       help='Color scheme for visualizations (default: nature)')
+    
+    # Reproducibility
+    parser.add_argument('--seed', type=int,
+                       help='Random seed for reproducible results (default: 42)')
+    
+    return parser.parse_args()
 
 
 def run_analysis(
@@ -95,8 +207,20 @@ def run_analysis(
     
     # Initialize tokenizer
     print(f"🔤 Initializing tokenizer: {tokenizer_type}")
+    
+    # Prepare user dictionary paths
+    extra_user_dicts = []
+    default_user_dict = "data/user_dict.zh.txt"
+    tech_terms_dict = "data/tech_terms.txt"
+    
+    if os.path.exists(default_user_dict):
+        extra_user_dicts.append(default_user_dict)
+    if os.path.exists(tech_terms_dict):
+        extra_user_dicts.append(tech_terms_dict)
+    
     tokenizer = MixedLanguageTokenizer(
         tokenizer_type=tokenizer_type,
+        extra_user_dicts=extra_user_dicts,
         stopwords_zh_path=stopwords_zh_path,
         stopwords_en_path=stopwords_en_path,
         allow_singletons_path=allow_singletons_path
@@ -192,7 +316,11 @@ def run_analysis(
     heaps_results = analyze_heaps_law(merged_corpus)
     
     print("🔤 Calculating lexical metrics...")
-    lexical_metrics = calculate_lexical_metrics(merged_corpus)
+    lexical_metrics = calculate_lexical_metrics(
+        merged_corpus, 
+        stopwords_zh=tokenizer.stopwords_zh if hasattr(tokenizer, 'stopwords_zh') else None,
+        stopwords_en=tokenizer.stopwords_en if hasattr(tokenizer, 'stopwords_en') else None
+    )
     
     print("📅 Analyzing year-over-year growth...")
     growth_data = get_year_over_year_growth(freq_by_year, topk=20)
@@ -412,57 +540,112 @@ def main():
     """
     Main function with all configuration knobs
     """
+    # Parse command line arguments
+    args = parse_arguments()
+    
     # =================================================================
     # 🔧 CONFIGURATION PARAMETERS
     # =================================================================
     
     # === Execution Control ===
-    RUN_ANALYSIS = True       # Phase 1: Theory-only analysis
-    RUN_VISUALIZATION = True  # Phase 2: Presentation
+    RUN_ANALYSIS = args.analysis if args.analysis is not None else True
+    RUN_VISUALIZATION = args.visualization if args.visualization is not None else True
     
     # === Data Paths ===
-    CORPUS_ROOT = "../Wechat-Backup/文不加点的张衔瑜"  # Corpus root directory
-    OUTPUT_DIR = "out"                               # Output directory (single sink)
+    CORPUS_ROOT = args.corpus or "../Wechat-Backup/文不加点的张衔瑜"
+    OUTPUT_DIR = args.output or "out"
     
     # === N-gram & Collocation Parameters ===
-    MAX_N = 8                    # Maximum n-gram length (not capped at 1-4)
-    MIN_FREQ = 5                 # Minimum frequency for n-gram retention
-    COLLOCATION = "pmi"          # "pmi" or "llr" for collocation filtering
-    PMI_THRESHOLD = 3.0          # PMI threshold for phrase validation
-    LLR_THRESHOLD = 10.83        # Log-likelihood ratio threshold
+    MAX_N = args.max_n or 8
+    MIN_FREQ = args.min_freq or 5
+    COLLOCATION = args.collocation or "pmi"
+    PMI_THRESHOLD = args.pmi_threshold or 3.0
+    LLR_THRESHOLD = args.llr_threshold or 10.83
     
     # === Tokenization Parameters ===
-    TOKENIZER_TYPE = "auto"      # "pkuseg", "jieba", or "auto" (pkuseg first)
+    TOKENIZER_TYPE = args.tokenizer or "auto"
     STOPWORDS_ZH_PATH = "data/stopwords.zh.txt"
     STOPWORDS_EN_PATH = "data/stopwords.en.txt"
     ALLOW_SINGLETONS_PATH = "data/allow_singletons.zh.txt"
     
     # === TF-IDF Parameters ===
-    TFIDF_MIN_DF = 1             # Minimum document frequency
-    TFIDF_MAX_DF = 0.98          # Maximum document frequency
-    TFIDF_TOPK = 150             # Top K terms per year
+    TFIDF_MIN_DF = 1
+    TFIDF_MAX_DF = 0.98
+    TFIDF_TOPK = 150
     
     # === Time Filtering ===
-    START_DATE = None            # "YYYY-MM-DD" or None
-    END_DATE = None              # "YYYY-MM-DD" or None
-    YEARS = None                 # ["2021", "2022"] or None for all
+    START_DATE = args.start_date
+    END_DATE = args.end_date
+    YEARS = args.years.split(',') if args.years else None
     
     # === Visualization Parameters ===
     GENERATE_WORDCLOUDS = True
     GENERATE_SCIENTIFIC_PLOTS = True
     GENERATE_REPORT = True
     
-    WORDCLOUD_MAX_WORDS = 200           # Overall word cloud size
-    YEARLY_WORDCLOUD_MAX_WORDS = 100    # Yearly word cloud size
+    WORDCLOUD_MAX_WORDS = 200
+    YEARLY_WORDCLOUD_MAX_WORDS = 100
     
-    FONT_PATH = None             # Path to Chinese font (auto-detect if None)
-    COLOR_SCHEME = "nature"      # "nature", "science", "calm"
+    FONT_PATH = args.font_path
+    COLOR_SCHEME = args.color_scheme or "nature"
     
-    YEARLY_COMPARISON_TOP_N = 20 # Top N words in yearly comparison
-    GROWTH_CHART_TOP_N = 20      # Top N words in growth chart
+    YEARLY_COMPARISON_TOP_N = 20
+    GROWTH_CHART_TOP_N = 20
     
     # === Reproducibility ===
-    SEED = 42                    # Random seed for reproducible results
+    SEED = args.seed or 42
+    
+    # =================================================================
+    # 📋 PRINT AND SAVE FINAL CONFIGURATION
+    # =================================================================
+    
+    config = {
+        "execution": {
+            "run_analysis": RUN_ANALYSIS,
+            "run_visualization": RUN_VISUALIZATION
+        },
+        "data_paths": {
+            "corpus_root": CORPUS_ROOT,
+            "output_dir": OUTPUT_DIR,
+            "stopwords_zh_path": STOPWORDS_ZH_PATH,
+            "stopwords_en_path": STOPWORDS_EN_PATH,
+            "allow_singletons_path": ALLOW_SINGLETONS_PATH
+        },
+        "analysis": {
+            "max_n": MAX_N,
+            "min_freq": MIN_FREQ,
+            "collocation": COLLOCATION,
+            "pmi_threshold": PMI_THRESHOLD,
+            "llr_threshold": LLR_THRESHOLD,
+            "tokenizer_type": TOKENIZER_TYPE
+        },
+        "tfidf": {
+            "min_df": TFIDF_MIN_DF,
+            "max_df": TFIDF_MAX_DF,
+            "topk": TFIDF_TOPK
+        },
+        "time_filtering": {
+            "start_date": START_DATE,
+            "end_date": END_DATE,
+            "years": YEARS
+        },
+        "visualization": {
+            "generate_wordclouds": GENERATE_WORDCLOUDS,
+            "generate_scientific_plots": GENERATE_SCIENTIFIC_PLOTS,
+            "generate_report": GENERATE_REPORT,
+            "wordcloud_max_words": WORDCLOUD_MAX_WORDS,
+            "yearly_wordcloud_max_words": YEARLY_WORDCLOUD_MAX_WORDS,
+            "font_path": FONT_PATH,
+            "color_scheme": COLOR_SCHEME,
+            "yearly_comparison_top_n": YEARLY_COMPARISON_TOP_N,
+            "growth_chart_top_n": GROWTH_CHART_TOP_N
+        },
+        "reproducibility": {
+            "seed": SEED
+        }
+    }
+    
+    print_and_save_config(config, OUTPUT_DIR)
     
     # =================================================================
     # 🚀 EXECUTION
@@ -522,9 +705,9 @@ def main():
         print("=" * 70)
         
         if RUN_ANALYSIS and not RUN_VISUALIZATION:
-            print("💡 Tip: Set RUN_VISUALIZATION = True to generate visuals")
+            print("💡 Tip: Set --visualization to generate visuals")
         elif RUN_VISUALIZATION and not RUN_ANALYSIS:
-            print("💡 Tip: Set RUN_ANALYSIS = True to rerun analysis")
+            print("💡 Tip: Set --analysis to rerun analysis")
         
     except Exception as e:
         print(f"❌ Error: {e}")

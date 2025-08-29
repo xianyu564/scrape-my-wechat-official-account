@@ -59,10 +59,11 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
                    topk: int = 100) -> pd.DataFrame:
     """
     Calculate TF-IDF scores using scikit-learn with pre-tokenized input
+    Properly handles pre-tokenized data by bypassing sklearn's default preprocessing
     
     Args:
         texts_by_year: Raw texts grouped by year
-        tokenizer_func: Tokenization function
+        tokenizer_func: Tokenization function that returns List[str]
         min_df: Minimum document frequency
         max_df: Maximum document frequency  
         max_features: Maximum number of features
@@ -78,25 +79,52 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
     
     results = []
     
+    # Define custom preprocessor and tokenizer that bypass sklearn's default behavior
+    def identity_preprocessor(doc):
+        """Identity preprocessor - return document as-is"""
+        return doc
+    
+    def identity_tokenizer(doc):
+        """Identity tokenizer - assume doc is already tokenized"""
+        if isinstance(doc, list):
+            return doc
+        elif isinstance(doc, str):
+            # If string, apply our tokenizer
+            return tokenizer_func(doc)
+        else:
+            return []
+    
     try:
-        # Create TF-IDF vectorizer
-        vectorizer = TfidfVectorizer(
-            tokenizer=tokenizer_func,
-            lowercase=False,  # We handle this in tokenizer
-            min_df=min_df,
-            max_df=max_df,
-            max_features=max_features,
-            stop_words=None,  # We handle this in tokenizer
-            token_pattern=None  # Use custom tokenizer
-        )
-        
         for year, texts in texts_by_year.items():
             if not texts:
                 continue
                 
             try:
-                # Fit and transform texts for this year
-                tfidf_matrix = vectorizer.fit_transform(texts)
+                # Pre-tokenize all texts for this year
+                tokenized_texts = []
+                for text in texts:
+                    tokens = tokenizer_func(text)
+                    if tokens:  # Only include non-empty tokenizations
+                        tokenized_texts.append(tokens)
+                
+                if not tokenized_texts:
+                    continue
+                
+                # Create TF-IDF vectorizer with custom functions to avoid preprocessing issues
+                vectorizer = TfidfVectorizer(
+                    preprocessor=identity_preprocessor,  # Don't modify input
+                    tokenizer=identity_tokenizer,        # Use pre-tokenized input
+                    lowercase=False,                     # Don't lowercase (already handled)
+                    min_df=min_df,
+                    max_df=max_df,
+                    max_features=max_features,
+                    stop_words=None,                     # Already handled in tokenizer
+                    token_pattern=None,                  # Use custom tokenizer
+                    analyzer='word'                      # Work at word level
+                )
+                
+                # Fit and transform pre-tokenized texts
+                tfidf_matrix = vectorizer.fit_transform(tokenized_texts)
                 feature_names = vectorizer.get_feature_names_out()
                 
                 # Calculate mean TF-IDF scores for each term
@@ -123,6 +151,115 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
     
     print(f"✅ TF-IDF complete: {len(results)} term-year pairs")
     return pd.DataFrame(results)
+
+
+def top_tfidf_terms(tfidf_results: pd.DataFrame, by: str = "year", k: int = 50) -> Dict[str, List[Tuple[str, float]]]:
+    """
+    Get top TF-IDF terms by year or overall
+    
+    Args:
+        tfidf_results: TF-IDF DataFrame from calculate_tfidf
+        by: "year" or "overall" 
+        k: Number of top terms to return
+        
+    Returns:
+        Dict: Top terms by category
+    """
+    if tfidf_results.empty:
+        return {}
+    
+    if by == "year":
+        # Group by year and get top terms
+        top_terms = {}
+        for year in tfidf_results['year'].unique():
+            year_data = tfidf_results[tfidf_results['year'] == year]
+            top_year = year_data.nlargest(k, 'score')
+            top_terms[year] = list(zip(top_year['word'], top_year['score']))
+        return top_terms
+    
+    elif by == "overall":
+        # Aggregate scores across years and get top terms
+        overall_scores = tfidf_results.groupby('word')['score'].mean().reset_index()
+        top_overall = overall_scores.nlargest(k, 'score')
+        return {"overall": list(zip(top_overall['word'], top_overall['score']))}
+    
+    else:
+        raise ValueError(f"Unknown 'by' parameter: {by}. Use 'year' or 'overall'.")
+
+
+def calculate_lexical_metrics(corpus_tokens: List[List[str]], 
+                             stopwords_zh: Optional[set] = None,
+                             stopwords_en: Optional[set] = None) -> Dict[str, float]:
+    """
+    Calculate lexical diversity and complexity metrics
+    
+    Args:
+        corpus_tokens: List of tokenized documents
+        stopwords_zh: Chinese stopwords set
+        stopwords_en: English stopwords set
+        
+    Returns:
+        Dict: Lexical metrics including TTR, Maas TTR, lexical density, etc.
+    """
+    if not corpus_tokens:
+        return {
+            'ttr': 0.0, 'maas_ttr': 0.0, 'lexical_density': 0.0,
+            'content_function_ratio': 0.0, 'total_tokens': 0, 'unique_tokens': 0
+        }
+    
+    # Flatten tokens
+    all_tokens = []
+    for tokens in corpus_tokens:
+        all_tokens.extend(tokens)
+    
+    if not all_tokens:
+        return {
+            'ttr': 0.0, 'maas_ttr': 0.0, 'lexical_density': 0.0,
+            'content_function_ratio': 0.0, 'total_tokens': 0, 'unique_tokens': 0
+        }
+    
+    total_tokens = len(all_tokens)
+    unique_tokens = len(set(all_tokens))
+    
+    # Basic Type-Token Ratio
+    ttr = unique_tokens / total_tokens if total_tokens > 0 else 0.0
+    
+    # Maas TTR: more stable for varying text lengths
+    # Maas = (log(total) - log(unique)) / (log(total))^2
+    if total_tokens > 1 and unique_tokens > 1:
+        log_total = math.log(total_tokens)
+        log_unique = math.log(unique_tokens)
+        maas_ttr = (log_total - log_unique) / (log_total ** 2)
+    else:
+        maas_ttr = 0.0
+    
+    # Lexical density: content words / total words
+    # Separate content words from function words using stopwords
+    stopwords = set()
+    if stopwords_zh:
+        stopwords.update(stopwords_zh)
+    if stopwords_en:
+        stopwords.update(stopwords_en)
+    
+    if stopwords:
+        content_words = [token for token in all_tokens if token.lower() not in stopwords and token not in stopwords]
+        function_words = [token for token in all_tokens if token.lower() in stopwords or token in stopwords]
+        
+        lexical_density = len(content_words) / total_tokens if total_tokens > 0 else 0.0
+        content_function_ratio = len(content_words) / len(function_words) if function_words else float('inf')
+    else:
+        # If no stopwords provided, assume all words are content words
+        lexical_density = 1.0
+        content_function_ratio = float('inf')
+    
+    return {
+        'ttr': ttr,
+        'maas_ttr': maas_ttr,
+        'lexical_density': lexical_density,
+        'content_function_ratio': content_function_ratio,
+        'total_tokens': total_tokens,
+        'unique_tokens': unique_tokens
+    }
 
 
 def analyze_zipf_law(frequencies: Counter) -> Dict[str, float]:
@@ -241,53 +378,6 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
         warnings.warn(f"Heaps analysis failed: {e}")
         return {'K': 0, 'beta': 0, 'r_squared': 0}
 
-
-def calculate_lexical_metrics(corpus_tokens: List[List[str]]) -> Dict[str, float]:
-    """
-    Calculate lexical diversity and density metrics
-    
-    Args:
-        corpus_tokens: List of tokenized documents
-        
-    Returns:
-        Dict: Lexical metrics (TTR, lexical_density, etc.)
-    """
-    if not corpus_tokens:
-        return {}
-    
-    # Flatten all tokens
-    all_tokens = []
-    for tokens in corpus_tokens:
-        all_tokens.extend(tokens)
-    
-    if not all_tokens:
-        return {}
-    
-    # Basic counts
-    total_tokens = len(all_tokens)
-    unique_tokens = len(set(all_tokens))
-    
-    # Type-Token Ratio (TTR)
-    ttr = unique_tokens / total_tokens if total_tokens > 0 else 0
-    
-    # Lexical density (content words ratio)
-    # Simplified: assume tokens without underscores or length > 1 are content words
-    content_tokens = [token for token in all_tokens 
-                     if len(token) > 1 or '_' in token or _is_content_word(token)]
-    lexical_density = len(content_tokens) / total_tokens if total_tokens > 0 else 0
-    
-    # Average document length
-    doc_lengths = [len(tokens) for tokens in corpus_tokens]
-    avg_doc_length = np.mean(doc_lengths) if doc_lengths else 0
-    
-    return {
-        'total_tokens': total_tokens,
-        'unique_tokens': unique_tokens,
-        'ttr': ttr,
-        'lexical_density': lexical_density,
-        'avg_doc_length': avg_doc_length,
-        'total_documents': len(corpus_tokens)
-    }
 
 
 def get_year_over_year_growth(freq_by_year: Dict[str, Counter], topk: int = 20) -> List[Dict[str, Any]]:
