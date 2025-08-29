@@ -1,585 +1,533 @@
 #!/usr/bin/env python3
 """
-中文语料分析主程序 - 分两步执行：分析 + 呈现
+Robust Chinese + Mixed-Language Linguistic Analysis
+Two-phase design: (1) theory-only analysis, (2) presentation
+All knobs live here in main.py
 """
 
 import os
 import sys
+import json
 import pickle
-import warnings
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import pandas as pd
-from tqdm import tqdm
-from datetime import datetime
+from typing import List, Dict, Any, Optional
+import warnings
 
-# 添加模块路径
-sys.path.insert(0, str(Path(__file__).parent))
+# Add pipeline to path
+sys.path.insert(0, str(Path(__file__).parent / "pipeline"))
 
-from src.io_utils import scan_articles, read_text, get_corpus_stats
-from src.tokenize_zh import ChineseTokenizer
-from src.freq_stats import (
-    term_freq_overall, term_freq_by_year, tfidf_topk_by_year,
-    zipf_plot, save_freq_stats, get_stats_summary
+# Import pipeline modules
+from corpus_io import load_corpus, read_text, get_corpus_stats, split_by_year
+from tokenize import MixedLanguageTokenizer
+from ngrams import build_ngrams, get_ngram_stats
+from stats import (
+    calculate_frequencies, calculate_frequencies_by_year, calculate_tfidf,
+    analyze_zipf_law, analyze_heaps_law, calculate_lexical_metrics,
+    get_year_over_year_growth, save_summary_stats
 )
-from src.wordcloud_viz import (
-    generate_overall_wordcloud, generate_yearly_wordclouds,
-    create_wordcloud_comparison
+from viz import (
+    create_zipf_panels, create_heaps_plot, create_wordcloud,
+    create_yearly_comparison_chart, create_growth_chart
 )
+from report import write_report
 
 
-def analyze_corpus(
-    root_dir: str,
-    output_dir: str = "analysis/out",
-    # 时间过滤选项
-    start_date: Optional[str] = None,  # 格式: "2020-01-01"  
-    end_date: Optional[str] = None,    # 格式: "2023-12-31"
-    years: Optional[List[str]] = None, # 例如: ["2021", "2022", "2023"]
-    # 分词参数
-    min_df: int = 5,                   # TF-IDF最小文档频率
-    max_df: float = 0.85,              # TF-IDF最大文档频率  
-    ngram_max: int = 2,                # 最大n-gram长度
-    topk: int = 50,                    # 每年返回的关键词数量
-    # 自定义文件路径
-    userdict_path: Optional[str] = None,        # 自定义词典
-    stopwords_path: str = "analysis/assets/stopwords_zh.txt", # 停用词文件
-    extra_stopwords_path: Optional[str] = None, # 额外停用词文件
+def run_analysis(
+    corpus_root: str,
+    output_dir: str,
+    # Analysis parameters
+    max_n: int = 8,
+    min_freq: int = 5,
+    collocation: str = 'pmi',
+    pmi_threshold: float = 3.0,
+    llr_threshold: float = 10.83,
+    # TF-IDF parameters
+    tfidf_min_df: int = 1,
+    tfidf_max_df: float = 0.98,
+    tfidf_topk: int = 150,
+    # Tokenizer parameters
+    tokenizer_type: str = "auto",
+    # Time filtering
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    years: Optional[List[str]] = None,
+    # Data paths
+    stopwords_zh_path: str = "data/stopwords.zh.txt",
+    stopwords_en_path: str = "data/stopwords.en.txt",
+    allow_singletons_path: str = "data/allow_singletons.zh.txt",
+    # Reproducibility
+    seed: int = 42
 ) -> Dict[str, Any]:
     """
-    第一步：纯理论分析 - 处理文本语料，生成统计数据，不产生可视化输出
-    
-    Args:
-        root_dir: 语料根目录，如 "Wechat-Backup/文不加点的张衔瑜"
-        output_dir: 分析结果输出目录
-        其他参数见注释
+    Phase 1: Theory-only analysis
+    Process corpus and generate all statistics without visualization
     
     Returns:
-        分析结果字典，包含所有统计信息
+        Dict: Complete analysis results
     """
+    print("=" * 70)
+    print("🧠 PHASE 1: THEORY-ONLY ANALYSIS")
+    print("=" * 70)
     
-    print("=" * 60)
-    print("🔬 第一步：语料理论分析")
-    print("=" * 60)
+    # Set random seed for reproducibility
+    import random
+    import numpy as np
+    random.seed(seed)
+    np.random.seed(seed)
     
-    # 扫描文章
-    print(f"📁 扫描语料目录: {root_dir}")
-    articles = scan_articles(
-        root_dir=root_dir,
+    # Create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Load corpus
+    print(f"📁 Loading corpus from: {corpus_root}")
+    articles = load_corpus(
+        root_dir=corpus_root,
         start_date=start_date,
         end_date=end_date,
         years=years
     )
     
     if not articles:
-        raise ValueError("❌ 未找到任何文章，请检查路径和过滤条件")
+        raise ValueError("❌ No articles found in corpus")
     
-    # 显示语料统计
     corpus_stats = get_corpus_stats(articles)
-    print(f"📊 语料统计: {corpus_stats}")
+    print(f"📊 Corpus loaded: {corpus_stats}")
     
-    # 初始化分词器
-    print("🔤 初始化中文分词器...")
-    extra_stopwords = []
-    if extra_stopwords_path and os.path.exists(extra_stopwords_path):
-        try:
-            with open(extra_stopwords_path, 'r', encoding='utf-8') as f:
-                extra_stopwords = [line.strip() for line in f if line.strip()]
-        except Exception as e:
-            warnings.warn(f"加载额外停用词失败: {e}")
-    
-    tokenizer = ChineseTokenizer(
-        userdict_path=userdict_path,
-        stopwords_path=stopwords_path,
-        extra_stopwords=extra_stopwords,
-        cache_dir=os.path.join(output_dir, ".cache")
+    # Initialize tokenizer
+    print(f"🔤 Initializing tokenizer: {tokenizer_type}")
+    tokenizer = MixedLanguageTokenizer(
+        tokenizer_type=tokenizer_type,
+        stopwords_zh_path=stopwords_zh_path,
+        stopwords_en_path=stopwords_en_path,
+        allow_singletons_path=allow_singletons_path
     )
     
-    # 读取和分词文本
-    print("📖 读取文章内容并分词...")
-    corpus_tokens = []
-    corpus_by_year = {}
+    # Tokenize all articles
+    print("📝 Tokenizing articles...")
+    all_tokens = []
+    articles_by_year = split_by_year(articles)
+    tokens_by_year = {}
     texts_by_year = {}
     
-    for article in tqdm(articles, desc="处理文章"):
-        text = read_text(article)
-        if not text:
-            continue
+    for year, year_articles in articles_by_year.items():
+        year_tokens = []
+        year_texts = []
         
-        tokens = tokenizer.tokenize(text, chinese_only=False, ngram_max=ngram_max, preserve_english=True)
-        if tokens:
-            corpus_tokens.append(tokens)
-            
-            # 按年分组
-            year = article.year
-            if year not in corpus_by_year:
-                corpus_by_year[year] = []
-                texts_by_year[year] = []
-            
-            corpus_by_year[year].append(tokens)
-            texts_by_year[year].append(text)
+        for article in year_articles:
+            text = read_text(article)
+            if text:
+                tokens = tokenizer.tokenize(text)
+                if tokens:
+                    all_tokens.append(tokens)
+                    year_tokens.append(tokens)
+                    year_texts.append(text)
+        
+        if year_tokens:
+            tokens_by_year[year] = year_tokens
+            texts_by_year[year] = year_texts
     
-    if not corpus_tokens:
-        raise ValueError("❌ 没有有效的分词结果")
+    print(f"✅ Tokenized {len(all_tokens)} articles across {len(tokens_by_year)} years")
     
-    print(f"✅ 成功处理 {len(corpus_tokens)} 篇文章")
+    # Build variable-length n-grams
+    print(f"🔢 Building n-grams: max_n={max_n}, collocation={collocation}")
     
-    # 词频统计
-    print("📊 计算词频统计...")
-    freq_overall = term_freq_overall(corpus_tokens)
-    freq_by_year = term_freq_by_year(corpus_by_year)
+    # Flatten tokens for n-gram analysis
+    flat_tokens = []
+    for tokens in all_tokens:
+        flat_tokens.extend(tokens)
     
-    # TF-IDF 分析
-    print("🔍 计算 TF-IDF 关键词...")
-    def create_tokenizer_func(tokenizer, chinese_only=False, ngram_max=1, preserve_english=True):
-        def tokenize_func(text):
-            return tokenizer.tokenize(text, chinese_only, ngram_max, preserve_english)
-        return tokenize_func
+    merged_tokens, ngram_counts = build_ngrams(
+        tokens=flat_tokens,
+        max_n=max_n,
+        min_freq=min_freq,
+        collocation=collocation,
+        pmi_threshold=pmi_threshold,
+        llr_threshold=llr_threshold
+    )
     
-    tokenizer_func = create_tokenizer_func(tokenizer, chinese_only=False, ngram_max=ngram_max)
+    # Rebuild corpus with merged tokens
+    merged_corpus = []
+    merged_by_year = {}
     
-    try:
-        tfidf_by_year = tfidf_topk_by_year(
-            texts_by_year=texts_by_year,
-            tokenizer_func=tokenizer_func,
-            min_df=min_df,
-            max_df=max_df,
-            ngram_range=(1, ngram_max),
-            topk=topk
-        )
-    except Exception as e:
-        print(f"⚠️ TF-IDF 分析失败，跳过: {e}")
-        tfidf_by_year = pd.DataFrame(columns=['year', 'word', 'score'])
+    start_idx = 0
+    for i, original_tokens in enumerate(all_tokens):
+        doc_length = len(original_tokens)
+        # Find corresponding article year
+        doc_year = None
+        for year, year_tokens in tokens_by_year.items():
+            if i < len(year_tokens):
+                doc_year = year
+                break
+        
+        # Extract merged tokens for this document (approximation)
+        end_idx = start_idx + doc_length
+        doc_merged = merged_tokens[start_idx:end_idx] if end_idx <= len(merged_tokens) else merged_tokens[start_idx:]
+        merged_corpus.append(doc_merged)
+        
+        if doc_year:
+            if doc_year not in merged_by_year:
+                merged_by_year[doc_year] = []
+            merged_by_year[doc_year].append(doc_merged)
+        
+        start_idx = end_idx
     
-    # 保存分析结果
-    print("💾 保存分析结果...")
-    os.makedirs(output_dir, exist_ok=True)
+    # Calculate statistics
+    print("📊 Calculating frequency statistics...")
+    freq_overall = calculate_frequencies(merged_corpus)
+    freq_by_year = calculate_frequencies_by_year(merged_by_year)
     
-    # 保存统计数据
-    save_freq_stats(freq_overall, freq_by_year, tfidf_by_year, output_dir)
+    print("🔍 Calculating TF-IDF...")
+    tfidf_results = calculate_tfidf(
+        texts_by_year=texts_by_year,
+        tokenizer_func=tokenizer.tokenize,
+        min_df=tfidf_min_df,
+        max_df=tfidf_max_df,
+        topk=tfidf_topk
+    )
     
-    # 保存中间结果到pickle文件，供第二步使用
+    print("📈 Analyzing Zipf's law...")
+    zipf_results = analyze_zipf_law(freq_overall)
+    
+    print("📊 Analyzing Heaps' law...")
+    heaps_results = analyze_heaps_law(merged_corpus)
+    
+    print("🔤 Calculating lexical metrics...")
+    lexical_metrics = calculate_lexical_metrics(merged_corpus)
+    
+    print("📅 Analyzing year-over-year growth...")
+    growth_data = get_year_over_year_growth(freq_by_year, topk=20)
+    
+    print("🔢 Collecting n-gram statistics...")
+    ngram_stats = get_ngram_stats(merged_tokens)
+    ngram_stats.update(ngram_counts)  # Add counts by length
+    
+    # Validate n-gram detection
+    detected_lengths = [n for n in range(1, max_n + 1) if ngram_counts.get(n, 0) > 0]
+    if not detected_lengths:
+        print("⚠️  WARNING: No n-grams detected, consider lowering min_freq")
+    else:
+        print(f"✅ N-gram lengths detected: {detected_lengths}")
+    
+    # Prepare results
     analysis_results = {
         'corpus_stats': corpus_stats,
-        'articles': articles,
-        'corpus_tokens': corpus_tokens,
-        'corpus_by_year': corpus_by_year,
-        'texts_by_year': texts_by_year,
         'freq_overall': freq_overall,
         'freq_by_year': freq_by_year,
-        'tfidf_by_year': tfidf_by_year,
+        'tfidf_results': tfidf_results,
+        'zipf_results': zipf_results,
+        'heaps_results': heaps_results,
+        'lexical_metrics': lexical_metrics,
+        'growth_data': growth_data,
+        'ngram_stats': ngram_stats,
+        'merged_tokens': merged_tokens,
+        'merged_corpus': merged_corpus,
+        'tokenizer_info': tokenizer.get_tokenizer_info(),
         'analysis_params': {
-            'root_dir': root_dir,
-            'start_date': start_date,
-            'end_date': end_date,
-            'years': years,
-            'min_df': min_df,
-            'max_df': max_df,
-            'ngram_max': ngram_max,
-            'topk': topk
-        },
-        'analysis_time': datetime.now().isoformat()
+            'max_n': max_n,
+            'min_freq': min_freq,
+            'collocation': collocation,
+            'pmi_threshold': pmi_threshold,
+            'llr_threshold': llr_threshold,
+            'tfidf_min_df': tfidf_min_df,
+            'tfidf_max_df': tfidf_max_df,
+            'tokenizer_type': tokenizer_type,
+            'seed': seed
+        }
     }
     
-    # 保存分析结果供第二步使用
+    # Save summary statistics
+    summary_path = os.path.join(output_dir, "summary.json")
+    save_summary_stats(
+        freq_overall=freq_overall,
+        freq_by_year=freq_by_year,
+        tfidf_results=tfidf_results,
+        zipf_results=zipf_results,
+        heaps_results=heaps_results,
+        lexical_metrics=lexical_metrics,
+        ngram_stats=ngram_stats,
+        output_path=summary_path
+    )
+    
+    # Save complete results for phase 2
     results_path = os.path.join(output_dir, "analysis_results.pkl")
     with open(results_path, 'wb') as f:
         pickle.dump(analysis_results, f)
     
-    print(f"🎯 理论分析完成！结果保存在: {output_dir}")
-    print(f"📈 分析数据已保存到: {results_path}")
+    print(f"💾 Analysis results saved to: {results_path}")
+    print("✅ Phase 1 complete!\n")
     
     return analysis_results
 
 
-def generate_visualizations(
-    output_dir: str = "analysis/out",
-    # 词云参数
-    make_wordcloud: bool = True,          # 是否生成词云
-    wordcloud_top_n: int = 200,           # 整体词云词汇数量
-    yearly_wordcloud_top_n: int = 100,    # 年度词云词汇数量
-    # 文件路径
-    font_path: Optional[str] = None,      # 中文字体文件路径
-    mask_path: str = "analysis/assets/mask.png",  # 词云遮罩图片
-    # 报告参数  
-    generate_report: bool = True,         # 是否生成Markdown报告
-    # Zipf分析
-    generate_zipf: bool = True,           # 是否生成Zipf定律分析图
+def run_presentation(
+    output_dir: str,
+    # Visualization parameters
+    generate_wordclouds: bool = True,
+    generate_scientific_plots: bool = True,
+    generate_report: bool = True,
+    # Word cloud parameters
+    wordcloud_max_words: int = 200,
+    yearly_wordcloud_max_words: int = 100,
+    # Font and styling
+    font_path: Optional[str] = None,
+    color_scheme: str = "nature",
+    # Chart parameters
+    yearly_comparison_top_n: int = 20,
+    growth_chart_top_n: int = 20
 ) -> Dict[str, str]:
     """
-    第二步：可视化呈现 - 基于第一步的分析结果生成词云、图表、报告等美观的可交付成果
-    
-    Args:
-        output_dir: 输出目录（应与第一步相同）
-        其他参数见注释
+    Phase 2: Presentation
+    Generate beautiful visualizations and reports from analysis results
     
     Returns:
-        生成文件的路径字典
+        Dict: Generated file paths
     """
+    print("=" * 70)
+    print("🎨 PHASE 2: PRESENTATION")
+    print("=" * 70)
     
-    print("=" * 60)  
-    print("🎨 第二步：可视化呈现")
-    print("=" * 60)
-    
-    # 加载第一步的分析结果
+    # Load analysis results
     results_path = os.path.join(output_dir, "analysis_results.pkl")
     if not os.path.exists(results_path):
-        raise FileNotFoundError(f"❌ 未找到分析结果文件: {results_path}\n请先运行第一步分析")
+        raise FileNotFoundError(f"❌ Analysis results not found: {results_path}")
     
-    print("📂 加载分析结果...")
+    print("📂 Loading analysis results...")
     with open(results_path, 'rb') as f:
-        analysis_results = pickle.load(f)
-    
-    freq_overall = analysis_results['freq_overall']
-    freq_by_year = analysis_results['freq_by_year'] 
-    tfidf_by_year = analysis_results['tfidf_by_year']
-    corpus_stats = analysis_results['corpus_stats']
+        results = pickle.load(f)
     
     generated_files = {}
     
-    # Zipf 定律分析
-    if generate_zipf:
-        print("📈 生成科学级 Zipf 定律分析图...")
-        zipf_path = os.path.join(output_dir, "zipf_overall_enhanced.png")
-        from src.freq_stats import zipf_plot_enhanced
-        zipf_plot_enhanced(
-            freq_data=freq_overall,
+    # Generate scientific plots
+    if generate_scientific_plots:
+        print("📈 Generating scientific plots...")
+        
+        # Zipf law panels
+        zipf_path = os.path.join(output_dir, "fig_zipf_panels.png")
+        create_zipf_panels(
+            frequencies=results['freq_overall'],
             output_path=zipf_path,
-            title="中文语料词频分布的科学级Zipf定律分析",
+            zipf_results=results['zipf_results'],
             font_path=font_path,
-            color_scheme="nature"
+            color_scheme=color_scheme
         )
-        generated_files['zipf_plot'] = zipf_path
-    
-    # 生成词云
-    if make_wordcloud:
-        print("🎨 生成期刊级词云...")
+        generated_files['zipf_panels'] = zipf_path
         
-        # 增强版整体词云
-        from src.wordcloud_viz import generate_enhanced_overall_wordcloud
-        overall_wordcloud_path = generate_enhanced_overall_wordcloud(
-            freq_data=freq_overall,
-            output_dir=output_dir,
-            mask_path=mask_path,
+        # Heaps law plot
+        heaps_path = os.path.join(output_dir, "fig_heaps.png")
+        create_heaps_plot(
+            corpus_tokens=results['merged_corpus'],
+            output_path=heaps_path,
+            heaps_results=results['heaps_results'],
             font_path=font_path,
-            top_n=wordcloud_top_n,
-            color_scheme="nature"
+            color_scheme=color_scheme
         )
-        if overall_wordcloud_path:
-            generated_files['overall_wordcloud'] = overall_wordcloud_path
+        generated_files['heaps_plot'] = heaps_path
         
-        # 年度词云
-        yearly_wordcloud_paths = generate_yearly_wordclouds(
-            freq_by_year=freq_by_year,
-            output_dir=output_dir,
-            mask_path=mask_path,
+        # Yearly comparison chart
+        yearly_comparison_path = os.path.join(output_dir, "fig_yearly_comparison.png")
+        create_yearly_comparison_chart(
+            freq_by_year=results['freq_by_year'],
+            output_path=yearly_comparison_path,
+            top_n=yearly_comparison_top_n,
             font_path=font_path,
-            top_n=yearly_wordcloud_top_n
+            color_scheme=color_scheme
         )
-        generated_files['yearly_wordclouds'] = yearly_wordcloud_paths
+        generated_files['yearly_comparison'] = yearly_comparison_path
+        
+        # Growth chart
+        if results['growth_data']:
+            growth_path = os.path.join(output_dir, "fig_growth.png")
+            create_growth_chart(
+                growth_data=results['growth_data'],
+                output_path=growth_path,
+                top_n=growth_chart_top_n,
+                font_path=font_path,
+                color_scheme=color_scheme
+            )
+            generated_files['growth_chart'] = growth_path
     
-    # 生成报告
+    # Generate word clouds
+    if generate_wordclouds:
+        print("🎨 Generating word clouds...")
+        
+        # Overall word cloud
+        overall_cloud_path = os.path.join(output_dir, "cloud_overall.png")
+        create_wordcloud(
+            frequencies=results['freq_overall'],
+            output_path=overall_cloud_path,
+            title="Overall Word Cloud",
+            font_path=font_path,
+            max_words=wordcloud_max_words,
+            color_scheme=color_scheme
+        )
+        generated_files['cloud_overall'] = overall_cloud_path
+        
+        # Yearly word clouds
+        yearly_clouds = []
+        for year, freq in results['freq_by_year'].items():
+            cloud_path = os.path.join(output_dir, f"cloud_{year}.png")
+            create_wordcloud(
+                frequencies=freq,
+                output_path=cloud_path,
+                title=f"{year} Word Cloud",
+                font_path=font_path,
+                max_words=yearly_wordcloud_max_words,
+                color_scheme=color_scheme
+            )
+            yearly_clouds.append(cloud_path)
+        
+        generated_files['yearly_clouds'] = yearly_clouds
+    
+    # Generate report
     if generate_report:
-        print("📝 生成分析报告...")
-        stats_summary = get_stats_summary(freq_overall, freq_by_year, tfidf_by_year)
-        report_path = generate_markdown_report(
-            stats_summary=stats_summary,
-            freq_overall=freq_overall,
-            freq_by_year=freq_by_year,
-            tfidf_by_year=tfidf_by_year,
-            corpus_stats=corpus_stats,
-            analysis_params=analysis_results['analysis_params'],
-            output_dir=output_dir
+        print("📝 Generating markdown report...")
+        report_path = write_report(
+            output_dir=output_dir,
+            corpus_stats=results['corpus_stats'],
+            freq_overall=results['freq_overall'],
+            freq_by_year=results['freq_by_year'],
+            tfidf_results=results['tfidf_results'],
+            zipf_results=results['zipf_results'],
+            heaps_results=results['heaps_results'],
+            lexical_metrics=results['lexical_metrics'],
+            ngram_stats=results['ngram_stats'],
+            growth_data=results['growth_data'],
+            analysis_params=results['analysis_params'],
+            tokenizer_info=results['tokenizer_info']
         )
         generated_files['report'] = report_path
     
-    print(f"🎉 可视化呈现完成！结果保存在: {output_dir}")
-    print("\n生成的文件:")
-    for file_type, file_path in generated_files.items():
-        if isinstance(file_path, list):
-            print(f"  - {file_type}: {len(file_path)} 个文件")
-            for path in file_path:
-                print(f"    * {os.path.basename(path)}")
+    print("✅ Phase 2 complete!")
+    print("\n📁 Generated files:")
+    for file_type, path in generated_files.items():
+        if isinstance(path, list):
+            print(f"  - {file_type}: {len(path)} files")
         else:
-            print(f"  - {file_type}: {os.path.basename(file_path)}")
+            print(f"  - {file_type}: {os.path.basename(path)}")
     
     return generated_files
 
 
-def generate_markdown_report(
-    stats_summary: dict,
-    freq_overall: pd.DataFrame,
-    freq_by_year: pd.DataFrame,
-    tfidf_by_year: pd.DataFrame,
-    corpus_stats: dict,
-    analysis_params: dict,
-    output_dir: str
-) -> str:
-    """Generate scientific-grade Markdown analysis report with English interface"""
-    
-    report_path = os.path.join(output_dir, "REPORT.md")
-    
-    with open(report_path, 'w', encoding='utf-8') as f:
-        # Header and executive summary
-        f.write("# 📊 Chinese Linguistic Corpus Analysis Report\n\n")
-        f.write("> **Analysis Target**: Personal WeChat Official Account Article Corpus\n")
-        f.write("> **Methodology**: Zipf's Law-based Frequency Statistical Analysis\n")
-        f.write("> **Technology Stack**: jieba tokenization + TF-IDF + Statistical Visualization\n\n")
-        
-        f.write("---\n\n")
-        
-        # Core findings (Executive Summary)
-        f.write("## 🎯 Executive Summary\n\n")
-        
-        if 'total_articles' in corpus_stats and 'total_unique_words' in stats_summary:
-            total_articles = corpus_stats['total_articles']
-            unique_words = stats_summary['total_unique_words']
-            total_freq = stats_summary['total_word_freq']
-            
-            f.write(f"📈 **Corpus Scale**: {total_articles:,} articles, {unique_words:,} unique tokens, total frequency {total_freq:,}\n\n")
-            
-            # Calculate vocabulary density
-            vocab_density = unique_words / total_freq if total_freq > 0 else 0
-            diversity_level = "High" if vocab_density > 0.1 else "Medium" if vocab_density > 0.05 else "Low"
-            f.write(f"🧠 **Vocabulary Density**: {vocab_density:.3f} ({diversity_level} level) - Reflecting linguistic expression richness\n\n")
-        
-        if 'years' in stats_summary and len(stats_summary['years']) > 1:
-            years = stats_summary['years']
-            f.write(f"⏱️ **Temporal Span**: {min(years)}-{max(years)} ({len(years)} years of data)\n\n")
-        
-        # Overall vocabulary map
-        f.write("## 🎨 Overall Vocabulary Landscape\n\n")
-        f.write("![Overall Word Cloud](wordcloud_overall.png)\n\n")
-        f.write("*Word size reflects usage frequency, color encoding follows scientific journal color schemes*\n\n")
-        
-        # Top frequency statistics
-        f.write("## 🔥 Top 20 High-Frequency Words\n\n")
-        if not freq_overall.empty:
-            top_20 = freq_overall.head(20)
-            
-            # Create two-column layout
-            f.write("| Rank | Word | Freq | Rank | Word | Freq |\n")
-            f.write("|:---:|:---:|:---:|:---:|:---:|:---:|\n")
-            
-            for i in range(0, min(20, len(top_20)), 2):
-                left_row = top_20.iloc[i]
-                left_rank = i + 1
-                left_word = left_row['word']
-                left_freq = left_row['freq']
-                
-                if i + 1 < len(top_20):
-                    right_row = top_20.iloc[i + 1]
-                    right_rank = i + 2
-                    right_word = right_row['word']
-                    right_freq = right_row['freq']
-                    f.write(f"| {left_rank} | **{left_word}** | {left_freq:,} | {right_rank} | **{right_word}** | {right_freq:,} |\n")
-                else:
-                    f.write(f"| {left_rank} | **{left_word}** | {left_freq:,} | - | - | - |\n")
-            
-            f.write("\n")
-        
-        # Zipf's Law analysis
-        f.write("## 📈 Linguistic Statistical Pattern Analysis\n\n")
-        f.write("![Zipf's Law Analysis](zipf_overall_enhanced.png)\n\n")
-        f.write("**Zipf's Law Validation**: Word frequency exhibits inverse relationship with rank, confirming natural language characteristics of Chinese corpus.\n\n")
-        
-        # Annual evolution analysis
-        if 'years' in stats_summary and len(stats_summary['years']) > 1:
-            f.write("## 📅 Annual Linguistic Evolution\n\n")
-            
-            years = sorted(stats_summary['years'])
-            
-            # Create annual comparison table
-            f.write("| Year | Core Keywords | Distinctive Features |\n")
-            f.write("|:---:|:---:|:---|\n")
-            
-            for year in years:
-                # Get annual high-frequency words
-                year_freq = freq_by_year[freq_by_year['year'] == year].head(3)
-                if not year_freq.empty:
-                    top_words = " • ".join(year_freq['word'].tolist())
-                else:
-                    top_words = "Data Missing"
-                
-                # Get annual distinctive words (TF-IDF)
-                if not tfidf_by_year.empty and 'year' in tfidf_by_year.columns:
-                    year_tfidf = tfidf_by_year[tfidf_by_year['year'] == year].head(2)
-                    if not year_tfidf.empty:
-                        distinctive_words = " • ".join(year_tfidf['word'].tolist())
-                    else:
-                        distinctive_words = "Under Analysis"
-                else:
-                    distinctive_words = "Under Analysis"
-                
-                f.write(f"| **{year}** | {top_words} | {distinctive_words} |\n")
-            
-            f.write("\n")
-            
-            # Annual word cloud gallery (compact display)
-            f.write("### 🖼️ Annual Word Cloud Evolution\n\n")
-            
-            # Display 3 years per row
-            years_per_row = 3
-            for i in range(0, len(years), years_per_row):
-                year_group = years[i:i+years_per_row]
-                
-                # Image row
-                img_row = " | ".join([f"![{year}](wordcloud_{year}.png)" for year in year_group])
-                f.write(f"| {img_row} |\n")
-                
-                # Title row
-                title_row = " | ".join([f"**{year}**" for year in year_group])
-                f.write(f"| {title_row} |\n")
-                
-                # Separator
-                sep_row = " | ".join([":---:" for _ in year_group])
-                f.write(f"| {sep_row} |\n\n")
-        
-        # Technical specifications and parameters
-        f.write("---\n\n")
-        f.write("## ⚙️ Technical Specifications\n\n")
-        
-        f.write("**Core Configuration Parameters**:\n")
-        f.write(f"- Tokenization Engine: jieba (precise mode) + {get_phrase_dict_size()} custom phrase dictionary entries\n")
-        f.write(f"- TF-IDF Parameters: min_df={analysis_params.get('min_df', 'N/A')}, max_df={analysis_params.get('max_df', 'N/A')}\n")
-        f.write(f"- **N-gram Length**: 1-{analysis_params.get('ngram_max', 'N/A')} (supporting single chars, words, phrases, four-character idioms)\n")
-        f.write(f"- Stopwords Library: Built-in 76 + custom extensions\n")
-        f.write(f"- Mixed Chinese-English: Intelligent recognition and preservation of English technical terms\n")
-        f.write(f"- Visualization: Scientific journal color schemes + 300 DPI high-resolution output\n\n")
-        
-        # Add comprehensive N-gram statistics
-        if 'ngram_stats' in stats_summary:
-            ngram_stats = stats_summary['ngram_stats']
-            f.write("**Linguistic Structure Analysis**:\n")
-            f.write(f"- Single Characters: {ngram_stats.get('单字词', 0):,} tokens (meaningful Chinese characters retained)\n")
-            f.write(f"- Two-Character Words: {ngram_stats.get('双字词', 0):,} tokens (common vocabulary)\n") 
-            f.write(f"- Three-Character Phrases: {ngram_stats.get('三字词', 0):,} tokens (colloquialisms, technical terms)\n")
-            f.write(f"- Four-Character Idioms: {ngram_stats.get('四字词', 0):,} tokens (idioms, compound concepts)\n")
-            f.write(f"- Multi-Character Terms: {ngram_stats.get('多字词', 0):,} tokens (complex technical terminology)\n")
-            f.write(f"- English Words: {ngram_stats.get('英文词', 0):,} tokens (technical terms preserved)\n")
-            f.write(f"- Compound N-grams: {ngram_stats.get('复合词', 0):,} tokens (intelligent n-gram combinations)\n")
-            f.write(f"- Technical Terms: {ngram_stats.get('技术词', 0):,} tokens (domain-specific vocabulary)\n")
-            f.write(f"- Classical Idioms: {ngram_stats.get('成语词', 0):,} tokens (traditional four-character expressions)\n\n")
-        
-        f.write("**Quality Assurance**:\n")
-        f.write("- ✅ Semantic filtering for single-character words (meaningful Chinese characters retained)\n")
-        f.write("- ✅ N-gram semantic coherence validation\n") 
-        f.write("- ✅ Zipf's Law compliance verification\n")
-        f.write("- ✅ Multi-dimensional statistical cross-validation\n")
-        f.write("- ✅ English-Chinese mixed content intelligent processing\n")
-        f.write("- ✅ Technical terminology preservation and classification\n\n")
-        
-        # Footer
-        f.write("---\n\n")
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"*📋 Report Generated: {current_time}*\n")
-        f.write(f"*🔧 Analysis Engine: Advanced Chinese Linguistic Analysis System v3.0*\n")
-        f.write(f"*📁 Data Source: {analysis_params.get('root_dir', 'WeChat Official Account Corpus')}*\n")
-        f.write(f"*🌐 Language Support: Comprehensive Chinese (1-4 character structures) + English Technical Terms*\n")
-    
-    print(f"📄 Scientific-grade analysis report generated: {report_path}")
-    return report_path
-
-
-def get_phrase_dict_size() -> int:
-    """Get the size of the phrase dictionary for reporting"""
-    try:
-        phrase_dict_path = "analysis/assets/chinese_phrases.txt"
-        if os.path.exists(phrase_dict_path):
-            with open(phrase_dict_path, 'r', encoding='utf-8') as f:
-                count = 0
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#'):
-                        count += 1
-                return count
-    except:
-        pass
-    return 122  # Default fallback
-
-
 def main():
     """
-    主函数 - 可以选择运行分析、呈现或两者
+    Main function with all configuration knobs
     """
+    # =================================================================
+    # 🔧 CONFIGURATION PARAMETERS
+    # =================================================================
+    
+    # === Execution Control ===
+    RUN_ANALYSIS = True       # Phase 1: Theory-only analysis
+    RUN_VISUALIZATION = True  # Phase 2: Presentation
+    
+    # === Data Paths ===
+    CORPUS_ROOT = "../Wechat-Backup/文不加点的张衔瑜"  # Corpus root directory
+    OUTPUT_DIR = "out"                               # Output directory (single sink)
+    
+    # === N-gram & Collocation Parameters ===
+    MAX_N = 8                    # Maximum n-gram length (not capped at 1-4)
+    MIN_FREQ = 5                 # Minimum frequency for n-gram retention
+    COLLOCATION = "pmi"          # "pmi" or "llr" for collocation filtering
+    PMI_THRESHOLD = 3.0          # PMI threshold for phrase validation
+    LLR_THRESHOLD = 10.83        # Log-likelihood ratio threshold
+    
+    # === Tokenization Parameters ===
+    TOKENIZER_TYPE = "auto"      # "pkuseg", "jieba", or "auto" (pkuseg first)
+    STOPWORDS_ZH_PATH = "data/stopwords.zh.txt"
+    STOPWORDS_EN_PATH = "data/stopwords.en.txt"
+    ALLOW_SINGLETONS_PATH = "data/allow_singletons.zh.txt"
+    
+    # === TF-IDF Parameters ===
+    TFIDF_MIN_DF = 1             # Minimum document frequency
+    TFIDF_MAX_DF = 0.98          # Maximum document frequency
+    TFIDF_TOPK = 150             # Top K terms per year
+    
+    # === Time Filtering ===
+    START_DATE = None            # "YYYY-MM-DD" or None
+    END_DATE = None              # "YYYY-MM-DD" or None
+    YEARS = None                 # ["2021", "2022"] or None for all
+    
+    # === Visualization Parameters ===
+    GENERATE_WORDCLOUDS = True
+    GENERATE_SCIENTIFIC_PLOTS = True
+    GENERATE_REPORT = True
+    
+    WORDCLOUD_MAX_WORDS = 200           # Overall word cloud size
+    YEARLY_WORDCLOUD_MAX_WORDS = 100    # Yearly word cloud size
+    
+    FONT_PATH = None             # Path to Chinese font (auto-detect if None)
+    COLOR_SCHEME = "nature"      # "nature", "science", "calm"
+    
+    YEARLY_COMPARISON_TOP_N = 20 # Top N words in yearly comparison
+    GROWTH_CHART_TOP_N = 20      # Top N words in growth chart
+    
+    # === Reproducibility ===
+    SEED = 42                    # Random seed for reproducible results
     
     # =================================================================
-    # 🔧 配置参数 - 根据需要修改下面的参数
-    # =================================================================
-    
-    # 必需参数
-    ROOT_DIR = "../Wechat-Backup/文不加点的张衔瑜"  # 语料根目录
-    OUTPUT_DIR = "out"                         # 输出目录
-    
-    # 运行模式选择
-    RUN_ANALYSIS = True       # 是否运行第一步（理论分析）
-    RUN_VISUALIZATION = True  # 是否运行第二步（可视化呈现）
-    
-    # 第一步：分析参数
-    ANALYSIS_PARAMS = {
-        # 时间过滤
-        'start_date': None,           # "2020-01-01" 或 None
-        'end_date': None,             # "2023-12-31" 或 None  
-        'years': None,                # ["2021", "2022", "2023"] 或 None
-        
-        # 分词参数 - 优化以支持复杂中文语言结构
-        'min_df': 1,                  # TF-IDF最小文档频率 (降低以保留更多有意义词汇)
-        'max_df': 0.98,               # TF-IDF最大文档频率 (提高以保留常用词)
-        'ngram_max': 4,               # 最大n-gram长度 (增加以支持三字词、四字成语、更长技术术语等)
-        'topk': 150,                  # 每年返回的关键词数量 (增加以获得更丰富分析)
-        
-        # 自定义文件路径  
-        'userdict_path': None,        # 自定义词典文件
-        'extra_stopwords_path': None, # 额外停用词文件
-    }
-    
-    # 第二步：可视化参数  
-    VISUALIZATION_PARAMS = {
-        # 词云设置 - 期刊级科学风格
-        'make_wordcloud': True,              # 是否生成词云
-        'wordcloud_top_n': 400,              # 整体词云词汇数量 (增加以获得更丰富的视觉效果)
-        'yearly_wordcloud_top_n': 200,       # 年度词云词汇数量 (增加层次感)
-        'font_path': None,                   # 中文字体文件路径，如 "/path/to/simhei.ttf"
-        'mask_path': "analysis/assets/mask.png",  # 词云遮罩图片
-        
-        # 其他输出
-        'generate_report': True,             # 是否生成Markdown报告  
-        'generate_zipf': True,               # 是否生成科学级Zipf定律分析图
-    }
-    
-    # =================================================================
-    # 🚀 执行分析流程
+    # 🚀 EXECUTION
     # =================================================================
     
     try:
-        # 第一步：理论分析
+        # Phase 1: Analysis
         if RUN_ANALYSIS:
-            analysis_results = analyze_corpus(
-                root_dir=ROOT_DIR,
+            results = run_analysis(
+                corpus_root=CORPUS_ROOT,
                 output_dir=OUTPUT_DIR,
-                **ANALYSIS_PARAMS
+                max_n=MAX_N,
+                min_freq=MIN_FREQ,
+                collocation=COLLOCATION,
+                pmi_threshold=PMI_THRESHOLD,
+                llr_threshold=LLR_THRESHOLD,
+                tfidf_min_df=TFIDF_MIN_DF,
+                tfidf_max_df=TFIDF_MAX_DF,
+                tfidf_topk=TFIDF_TOPK,
+                tokenizer_type=TOKENIZER_TYPE,
+                start_date=START_DATE,
+                end_date=END_DATE,
+                years=YEARS,
+                stopwords_zh_path=STOPWORDS_ZH_PATH,
+                stopwords_en_path=STOPWORDS_EN_PATH,
+                allow_singletons_path=ALLOW_SINGLETONS_PATH,
+                seed=SEED
             )
-            print("\n" + "="*60)
-            print("✅ 第一步完成！可以修改可视化参数后单独运行第二步")
-            print("="*60 + "\n")
+            
+            # Validation check
+            summary_path = os.path.join(OUTPUT_DIR, "summary.json")
+            with open(summary_path, 'r', encoding='utf-8') as f:
+                summary = json.load(f)
+            
+            detected_lengths = summary.get('ngram_lengths_detected', [])
+            if not detected_lengths or max(detected_lengths) < 2:
+                print("⚠️  WARNING: Limited n-gram detection. Consider lowering MIN_FREQ.")
+            else:
+                print(f"✅ Self-check passed: n-gram lengths {detected_lengths}")
         
-        # 第二步：可视化呈现
+        # Phase 2: Visualization
         if RUN_VISUALIZATION:
-            generated_files = generate_visualizations(
+            generated_files = run_presentation(
                 output_dir=OUTPUT_DIR,
-                **VISUALIZATION_PARAMS  
+                generate_wordclouds=GENERATE_WORDCLOUDS,
+                generate_scientific_plots=GENERATE_SCIENTIFIC_PLOTS,
+                generate_report=GENERATE_REPORT,
+                wordcloud_max_words=WORDCLOUD_MAX_WORDS,
+                yearly_wordcloud_max_words=YEARLY_WORDCLOUD_MAX_WORDS,
+                font_path=FONT_PATH,
+                color_scheme=COLOR_SCHEME,
+                yearly_comparison_top_n=YEARLY_COMPARISON_TOP_N,
+                growth_chart_top_n=GROWTH_CHART_TOP_N
             )
-            print("\n" + "="*60)
-            print("🎉 全部分析完成！")
-            print("="*60 + "\n")
-            
-        # 如果只运行一步，给出提示
+        
+        print("\n🎉 ANALYSIS COMPLETE!")
+        print("=" * 70)
+        
         if RUN_ANALYSIS and not RUN_VISUALIZATION:
-            print("💡 提示：要生成可视化结果，请设置 RUN_VISUALIZATION = True")
+            print("💡 Tip: Set RUN_VISUALIZATION = True to generate visuals")
         elif RUN_VISUALIZATION and not RUN_ANALYSIS:
-            print("💡 提示：如需重新分析语料，请设置 RUN_ANALYSIS = True")
-            
+            print("💡 Tip: Set RUN_ANALYSIS = True to rerun analysis")
+        
     except Exception as e:
-        print(f"❌ 运行出错: {e}")
+        print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
 
