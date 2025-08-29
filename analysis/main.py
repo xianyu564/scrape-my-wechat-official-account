@@ -207,8 +207,20 @@ def run_analysis(
     
     # Initialize tokenizer
     print(f"🔤 Initializing tokenizer: {tokenizer_type}")
+    
+    # Prepare user dictionary paths
+    extra_user_dicts = []
+    default_user_dict = "data/user_dict.zh.txt"
+    tech_terms_dict = "data/tech_terms.txt"
+    
+    if os.path.exists(default_user_dict):
+        extra_user_dicts.append(default_user_dict)
+    if os.path.exists(tech_terms_dict):
+        extra_user_dicts.append(tech_terms_dict)
+    
     tokenizer = MixedLanguageTokenizer(
         tokenizer_type=tokenizer_type,
+        extra_user_dicts=extra_user_dicts,
         stopwords_zh_path=stopwords_zh_path,
         stopwords_en_path=stopwords_en_path,
         allow_singletons_path=allow_singletons_path
