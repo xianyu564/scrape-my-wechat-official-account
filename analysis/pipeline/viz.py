@@ -12,9 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import font_manager
 from wordcloud import WordCloud
-from typing import Dict, List, Counter as CounterType, Optional, Any
-from collections import Counter
-import warnings
 from functools import lru_cache
 import time
 from pathlib import Path
