@@ -1,11 +1,23 @@
 # script/wx_publish_backup.py
 
 # wx_publish_backup.py  (year-only folders; HTML named as YYYY-MM-DD_<title>.html)
-import os, re, json, time, pathlib, hashlib, html, random, logging, sys
+import hashlib
+import html
+import json
+import logging
+import mimetypes
+import pathlib
+import random
+import re
+import sys
+import time
+from urllib.parse import parse_qs, urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, parse_qs
-import mimetypes
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 
 # ===== 从env.json读取配置 =====
 def load_env_config():
@@ -15,14 +27,14 @@ def load_env_config():
         script_dir = pathlib.Path(__file__).parent
         project_root = script_dir.parent
         env_file = project_root / "env.json"
-        
-        with open(env_file, "r", encoding="utf-8") as f:
+
+        with open(env_file, encoding="utf-8") as f:
             config = json.load(f)
         return config
     except FileNotFoundError:
-        raise FileNotFoundError("请创建env.json文件，参考env.json.EXAMPLE")
+        raise FileNotFoundError("请创建env.json文件，参考env.json.EXAMPLE") from None
     except json.JSONDecodeError:
-        raise ValueError("env.json文件格式错误")
+        raise ValueError("env.json文件格式错误") from None
 
 # 加载配置
 config = load_env_config()
@@ -51,6 +63,23 @@ START_TS = to_ts(START_DATE, end=False)
 END_TS   = to_ts(END_DATE,   end=True)
 
 
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename by removing/replacing invalid characters."""
+    # Remove or replace invalid characters for filesystem
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        filename = filename.replace(char, '_')
+
+    # Remove leading/trailing dots and spaces
+    filename = filename.strip('. ')
+
+    # Limit length to avoid filesystem issues
+    if len(filename) > 200:
+        filename = filename[:200]
+
+    return filename or "untitled"
+
+
 script_dir = pathlib.Path(__file__).resolve().parent
 project_root = script_dir.parent
 OUTDIR = project_root / "Wechat-Backup" / WECHAT_ACCOUNT_NAME
@@ -69,9 +98,6 @@ S.headers.update({
     "Accept-Language": "zh-CN,zh;q=0.9",
     "X-Requested-With": "XMLHttpRequest"
 })
-
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 retry = Retry(
     total=5,
@@ -124,7 +150,7 @@ def fetch_publish_page(begin: int, count: int) -> dict:
         "f": "json",
         "ajax": "1",
     }
-    
+
     # a maybe key need
     params.update({"sub_action": "list_ex", "free_publish_type": "1"})
 
@@ -276,7 +302,7 @@ def save_article(title: str, link: str, ts: int):
     html_text = download(link)
     if not html_text:
         raise RuntimeError("正文下载为空")
-    
+
     soup = BeautifulSoup(html_text, "html.parser")
     content = soup.select_one("#js_content") or soup.body or soup
     if content is None:
@@ -381,7 +407,7 @@ def main():
             begin += COUNT_PER_PAGE
             sleep_with_jitter(SLEEP_LIST)
             continue
-        
+
         publish_list = page.get("publish_list") or []
         total = total if total is not None else page.get("total_count", None)
 
