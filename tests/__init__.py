@@ -1,1 +1,1 @@
-# Tests for scrape-my-wechat-official-account
+# Tests for scrape-my-wechat-official-account analysis pipeline
