@@ -12,9 +12,6 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.feature_extraction.text import TfidfVectorizer
-from typing import List, Dict, Tuple, Counter as CounterType, Any, Optional
-from collections import Counter
-import warnings
 from concurrent.futures import ProcessPoolExecutor
 from functools import lru_cache
 import time
