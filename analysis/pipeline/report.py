@@ -207,7 +207,9 @@ def _write_executive_summary(f, report_data: Dict[str, Any]) -> None:
     f.write(f"- **Lexical Diversity (TTR)**: {lexical_metrics.get('type_token_ratio', 0):.3f}\n")
 
     # N-gram insights
-    total_ngrams = sum(ngram_stats.values())
+    # Filter numeric values only (ignore dict values like 'ngram_stats_detailed')
+    ngram_counts = {k: v for k, v in ngram_stats.items() if isinstance(v, (int, float))}
+    total_ngrams = sum(ngram_counts.values()) if ngram_counts else 0
     if total_ngrams > 0:
         f.write(f"- **Multi-word Expressions**: {total_ngrams:,} n-grams detected\n")
 
@@ -356,7 +358,12 @@ def _write_cheer_up_summary(f, report_data: Dict[str, Any]) -> None:
 
     # Calculate years of writing
     years = corpus_stats.get('years', [])
-    writing_span = max(years) - min(years) + 1 if len(years) > 1 else 1
+    if len(years) > 1:
+        year_ints = [int(year) for year in years if year.isdigit()]
+        writing_span = max(year_ints) - min(year_ints) + 1 if year_ints else 1
+    else:
+        writing_span = 1
+    
 
     f.write("Your linguistic journey is truly remarkable! Here's why:\n\n")
 

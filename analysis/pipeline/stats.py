@@ -12,6 +12,14 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.feature_extraction.text import TfidfVectorizer
+from typing import List, Dict, Tuple, Counter as CounterType, Any, Optional
+from collections import Counter
+import warnings
+from concurrent.futures import ProcessPoolExecutor
+from functools import lru_cache
+import time
+from tqdm import tqdm
+
 
 
 def calculate_frequencies(corpus_tokens: List[List[str]]) -> Counter:
@@ -59,7 +67,7 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
                    max_features: Optional[int] = None,
                    topk: int = 100) -> pd.DataFrame:
     """
-    Calculate TF-IDF scores using scikit-learn with pre-tokenized input
+    Calculate TF-IDF scores using scikit-learn with pre-tokenized input and progress tracking
     Properly handles pre-tokenized data by bypassing sklearn's default preprocessing
     
     Args:
@@ -96,20 +104,32 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
             return []
 
     try:
-        for year, texts in texts_by_year.items():
+        # Add progress tracking for years
+        years = list(texts_by_year.keys())
+        for year in tqdm(years, desc="Processing years for TF-IDF"):
+            texts = texts_by_year[year]
             if not texts:
                 continue
 
             try:
-                # Pre-tokenize all texts for this year
+                # Pre-tokenize all texts for this year with progress
+                print(f"   📝 Tokenizing {len(texts)} documents for {year}...")
                 tokenized_texts = []
-                for text in texts:
+                
+                # Use tqdm for tokenization if there are many texts
+                text_iterator = tqdm(texts, desc=f"Tokenizing {year}", 
+                                   disable=len(texts) < 50, leave=False)
+                
+                for text in text_iterator:
                     tokens = tokenizer_func(text)
                     if tokens:  # Only include non-empty tokenizations
                         tokenized_texts.append(tokens)
 
                 if not tokenized_texts:
                     continue
+                
+                print(f"   🔢 Computing TF-IDF for {len(tokenized_texts)} documents...")
+                
 
                 # Create TF-IDF vectorizer with custom functions to avoid preprocessing issues
                 vectorizer = TfidfVectorizer(
@@ -233,9 +253,10 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
         maas_ttr = (log_total - log_unique) / (log_total ** 2)
     else:
         maas_ttr = 0.0
+    
+    # Optimized lexical density calculation
+    # Combine stopwords into a single set for faster lookup
 
-    # Lexical density: content words / total words
-    # Separate content words from function words using stopwords
     stopwords = set()
     if stopwords_zh:
         stopwords.update(stopwords_zh)
@@ -243,11 +264,19 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
         stopwords.update(stopwords_en)
 
     if stopwords:
-        content_words = [token for token in all_tokens if token.lower() not in stopwords and token not in stopwords]
-        function_words = [token for token in all_tokens if token.lower() in stopwords or token in stopwords]
+        # Count content and function words in a single pass
+        content_word_count = 0
+        function_word_count = 0
+        
+        for token in all_tokens:
+            if token.lower() in stopwords or token in stopwords:
+                function_word_count += 1
+            else:
+                content_word_count += 1
+        
+        lexical_density = content_word_count / total_tokens if total_tokens > 0 else 0.0
+        content_function_ratio = content_word_count / function_word_count if function_word_count > 0 else float('inf')
 
-        lexical_density = len(content_words) / total_tokens if total_tokens > 0 else 0.0
-        content_function_ratio = len(content_words) / len(function_words) if function_words else float('inf')
     else:
         # If no stopwords provided, assume all words are content words
         lexical_density = 1.0
@@ -319,15 +348,17 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
     """
     Analyze Heaps' law: vocabulary growth with corpus size
     V = K * n^β where V=vocabulary size, n=corpus size
+    Includes bootstrap confidence interval estimation
     
     Args:
         corpus_tokens: List of tokenized documents
         
     Returns:
-        Dict: Heaps analysis results (K, beta, r_squared)
+        Dict: Heaps analysis results (K, beta, r_squared, confidence intervals)
     """
     if not corpus_tokens:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+        return {'K': 0, 'beta': 0, 'r_squared': 0, 'confidence_lower': 0, 'confidence_upper': 0}
+    
 
     # Calculate cumulative vocabulary size
     vocabulary = set()
@@ -341,9 +372,22 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
 
         corpus_sizes.append(total_tokens)
         vocab_sizes.append(len(vocabulary))
-
-    if len(corpus_sizes) < 10:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+    
+    # Adaptive threshold for small datasets
+    min_points = min(10, max(3, len(corpus_sizes) // 2))
+    if len(corpus_sizes) < min_points:
+        # Return degraded result for very small datasets
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0, 
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'warning': f'Insufficient data points ({len(corpus_sizes)}) for reliable Heaps analysis'
+        }
+    
 
     # Convert to numpy arrays
     n = np.array(corpus_sizes)
@@ -353,9 +397,19 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
     valid_indices = (n > 0) & (V > 0)
     n = n[valid_indices]
     V = V[valid_indices]
-
-    if len(n) < 10:
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+    
+    if len(n) < min_points:
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0,
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'warning': f'Insufficient valid data points ({len(n)}) for reliable Heaps analysis'
+        }
+    
 
     # Log-log regression: log(V) = log(K) + β * log(n)
     log_n = np.log(n)
@@ -364,20 +418,125 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
     try:
         beta, log_K, r_value, p_value, std_err = stats.linregress(log_n, log_V)
         K = math.exp(log_K)
+        
+        # Bootstrap confidence interval estimation
+        confidence_lower, confidence_upper = _bootstrap_heaps_confidence(log_n, log_V, n_bootstrap=100)
+        
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        
+        result = {
 
-        return {
             'K': K,
             'beta': beta,
             'r_squared': r_value ** 2,
             'p_value': p_value,
             'std_err': std_err,
+            'confidence_lower': confidence_lower,
+            'confidence_upper': confidence_upper,
             'total_documents': len(corpus_tokens),
             'final_corpus_size': corpus_sizes[-1],
-            'final_vocab_size': vocab_sizes[-1]
+            'final_vocab_size': vocab_sizes[-1],
+            'final_ttr': final_ttr,
+            'valid_points': len(n)
         }
+        
+        # Add warning for small datasets
+        if len(n) < 10:
+            result['warning'] = f'Small dataset ({len(n)} points) may affect reliability of Heaps law estimation'
+            
+        return result
+        
     except Exception as e:
         warnings.warn(f"Heaps analysis failed: {e}")
-        return {'K': 0, 'beta': 0, 'r_squared': 0}
+        final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
+        return {
+            'K': 0, 'beta': 0, 'r_squared': 0,
+            'confidence_lower': 0, 'confidence_upper': 0,
+            'total_documents': len(corpus_tokens),
+            'final_corpus_size': total_tokens,
+            'final_vocab_size': len(vocabulary),
+            'final_ttr': final_ttr,
+            'error': str(e)
+        }
+
+
+def _bootstrap_heaps_confidence(log_n: np.ndarray, log_V: np.ndarray, 
+                               n_bootstrap: int = 100, confidence_level: float = 0.95) -> Tuple[float, float]:
+    """
+    Bootstrap confidence interval for Heaps law parameters with parallel processing
+    
+    Args:
+        log_n: Log corpus sizes
+        log_V: Log vocabulary sizes
+        n_bootstrap: Number of bootstrap samples
+        confidence_level: Confidence level (default 0.95 for 95% CI)
+    
+    Returns:
+        Tuple[float, float]: Lower and upper confidence bounds for beta parameter
+    """
+    if len(log_n) < 3:
+        return 0.0, 0.0
+    
+    def _single_bootstrap_sample(seed: int) -> Optional[float]:
+        """Single bootstrap sample calculation"""
+        np.random.seed(seed)
+        indices = np.random.choice(len(log_n), size=len(log_n), replace=True)
+        boot_log_n = log_n[indices]
+        boot_log_V = log_V[indices]
+        
+        try:
+            beta, _, _, _, _ = stats.linregress(boot_log_n, boot_log_V)
+            return beta
+        except:
+            return None
+    
+    # Use parallel processing for large bootstrap samples
+    if n_bootstrap > 50:
+        # Use ProcessPoolExecutor for CPU-bound bootstrap calculations
+        with ProcessPoolExecutor(max_workers=min(4, n_bootstrap // 10)) as executor:
+            seeds = range(42, 42 + n_bootstrap)  # Deterministic seeds for reproducibility
+            
+            # Submit all tasks
+            futures = [executor.submit(_single_bootstrap_sample, seed) for seed in seeds]
+            
+            # Collect results with progress bar
+            bootstrap_betas = []
+            for future in tqdm(futures, desc="Bootstrap sampling", disable=n_bootstrap < 200):
+                try:
+                    result = future.result(timeout=1.0)  # 1 second timeout per sample
+                    if result is not None:
+                        bootstrap_betas.append(result)
+                except:
+                    continue
+    else:
+        # Sequential processing for small bootstrap samples
+        np.random.seed(42)  # For reproducibility
+        bootstrap_betas = []
+        
+        for i in range(n_bootstrap):
+            # Resample with replacement
+            indices = np.random.choice(len(log_n), size=len(log_n), replace=True)
+            boot_log_n = log_n[indices]
+            boot_log_V = log_V[indices]
+            
+            try:
+                beta, _, _, _, _ = stats.linregress(boot_log_n, boot_log_V)
+                bootstrap_betas.append(beta)
+            except:
+                continue
+    
+    if not bootstrap_betas:
+        return 0.0, 0.0
+    
+    # Calculate confidence interval
+    alpha = 1 - confidence_level
+    lower_percentile = (alpha / 2) * 100
+    upper_percentile = (1 - alpha / 2) * 100
+    
+    confidence_lower = np.percentile(bootstrap_betas, lower_percentile)
+    confidence_upper = np.percentile(bootstrap_betas, upper_percentile)
+    
+    return confidence_lower, confidence_upper
 
 
 

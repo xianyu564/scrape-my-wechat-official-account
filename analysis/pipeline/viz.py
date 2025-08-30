@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import font_manager
 from wordcloud import WordCloud
+from typing import Dict, List, Counter as CounterType, Optional, Any
+from collections import Counter
+import warnings
+from functools import lru_cache
+import time
+from pathlib import Path
+
 
 # Set up matplotlib for Chinese font support
 plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Liberation Sans']
@@ -21,13 +28,71 @@ plt.rcParams['axes.unicode_minus'] = False
 COLOR_SCHEMES = {
     'nature': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'],
     'science': ['#2E8B57', '#4682B4', '#CD853F', '#DC143C', '#9932CC', '#FF8C00'],
-    'calm': ['#6B8E23', '#4F94CD', '#CD853F', '#F4A460', '#9ACD32', '#87CEEB']
+    'calm': ['#6B8E23', '#4F94CD', '#CD853F', '#F4A460', '#9ACD32', '#87CEEB'],
+    'muted': ['#88CCEE', '#CC6677', '#DDCC77', '#117733', '#332288', '#AA4499'],
+    'solar': ['#FDB863', '#E08214', '#8073AC', '#542788', '#2D004B', '#B35806']
 }
 
 
+@lru_cache(maxsize=4)
+def _find_system_chinese_fonts() -> List[str]:
+    """
+    Cache-optimized system Chinese font detection
+    
+    Returns:
+        List[str]: Available Chinese font paths
+    """
+    print("🔍 Scanning system fonts for Chinese support...")
+    
+    # Common Chinese font names to search for
+    chinese_font_names = [
+        'SimHei', 'SimSun', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
+        'STHeiti', 'STSong', 'Source Han Sans', 'Noto Sans CJK', 'WenQuanYi',
+        'AR PL UMing', 'AR PL UKai', 'Liberation Sans', 'DejaVu Sans'
+    ]
+    
+    # System font directories to search
+    font_dirs = [
+        '/System/Library/Fonts',  # macOS
+        '/usr/share/fonts',       # Linux
+        '/usr/local/share/fonts', # Linux (user)
+        '/Library/Fonts',         # macOS (user)
+        'C:/Windows/Fonts',       # Windows
+        '/opt/homebrew/share/fonts',  # macOS (Homebrew)
+        '~/.fonts',               # Linux (user)
+    ]
+    
+    found_fonts = []
+    
+    # Search system font directories
+    for font_dir in font_dirs:
+        font_path = Path(font_dir).expanduser()
+        if font_path.exists():
+            for font_file in font_path.rglob('*.ttf'):
+                if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
+                    found_fonts.append(str(font_file))
+            for font_file in font_path.rglob('*.otf'):
+                if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
+                    found_fonts.append(str(font_file))
+    
+    # Also check matplotlib's font cache
+    try:
+        for font in font_manager.fontManager.ttflist:
+            font_name = font.name.lower()
+            if any(chinese_name.lower() in font_name for chinese_name in chinese_font_names):
+                if font.fname not in found_fonts:
+                    found_fonts.append(font.fname)
+    except:
+        pass
+    
+    print(f"✅ Found {len(found_fonts)} potential Chinese fonts")
+    return found_fonts[:10]  # Return top 10 candidates
+
+
+@lru_cache(maxsize=2)
 def setup_chinese_font(font_path: Optional[str] = None) -> str:
     """
-    Setup Chinese font for matplotlib and wordcloud with comprehensive auto-detection
+    Setup Chinese font for matplotlib and wordcloud with comprehensive auto-detection and caching
     
     Args:
         font_path: Path to Chinese font file
@@ -43,8 +108,28 @@ def setup_chinese_font(font_path: Optional[str] = None) -> str:
             return font_path
         except Exception as e:
             warnings.warn(f"Failed to load custom font {font_path}: {e}")
+    
+    # First, try to find fonts using cached font detection
+    try:
+        font_candidates = _find_system_chinese_fonts()
+        
+        for font_file in font_candidates:
+            try:
+                # Test if font can be loaded
+                font_prop = font_manager.FontProperties(fname=font_file)
+                plt.rcParams['font.family'] = font_prop.get_name()
+                print(f"✅ Using Chinese font file: {font_file}")
+                return font_file
+            except Exception:
+                continue
+                
+    except Exception as e:
+        warnings.warn(f"Font detection failed: {e}")
+    
+    # Fallback to matplotlib's default handling
+    print("⚠️  Using system default font (Chinese characters may not display properly)")
+    return ""
 
-    # First, try to find fonts using matplotlib's font manager
     try:
         # Check for installed fonts that support Chinese
         chinese_font_families = [
@@ -209,12 +294,18 @@ def create_zipf_panels(frequencies: Counter,
     stats_text = f"R² = {r_squared:.3f}\nSlope = {slope:.3f}\nTerms = {len(frequencies):,}"
     fig.text(0.02, 0.02, stats_text, fontsize=10,
              bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7))
+    
+    # Add approximation warning
+    fig.text(0.98, 0.02, "⚠️ Zipf law fitting is an approximation - interpret results carefully",
+             fontsize=8, style='italic', alpha=0.7, ha='right')
+    
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
 
     print(f"📈 Zipf panels saved: {output_path}")
+    print("ℹ️  Note: Zipf law analysis is an approximation - please interpret results carefully")
 
 
 def create_heaps_plot(corpus_tokens: List[List[str]],
@@ -223,7 +314,7 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
                      font_path: Optional[str] = None,
                      color_scheme: str = 'nature') -> None:
     """
-    Create Heaps' law analysis plot with confidence intervals
+    Create Heaps' law analysis plot with bootstrap confidence intervals
     
     Args:
         corpus_tokens: Tokenized documents
@@ -246,9 +337,12 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
         vocabulary.update(tokens)
         corpus_sizes.append(total_tokens)
         vocab_sizes.append(len(vocabulary))
+    
+    # Adaptive handling for small datasets
+    min_points = min(10, max(3, len(corpus_sizes) // 2))
+    if len(corpus_sizes) < min_points:
+        print(f"⚠️  Insufficient data for Heaps analysis ({len(corpus_sizes)} points)")
 
-    if len(corpus_sizes) < 10:
-        print("⚠️  Insufficient data for Heaps analysis")
         return
 
     n = np.array(corpus_sizes)
@@ -258,42 +352,60 @@ def create_heaps_plot(corpus_tokens: List[List[str]],
     fig, ax = plt.subplots(1, 1, figsize=(10, 6), dpi=300)
 
     # Plot actual data
-    ax.plot(n, V, 'o', color=colors[0], alpha=0.7, markersize=4, label='Observed')
-
-    # Plot fitted curve
+    ax.plot(n, V, 'o', color=colors[0], alpha=0.7, markersize=4, label='Observed Data')
+    
+    # Plot fitted curve and confidence bands
     K = heaps_results.get('K', 0)
     beta = heaps_results.get('beta', 0)
+    confidence_lower = heaps_results.get('confidence_lower', 0)
+    confidence_upper = heaps_results.get('confidence_upper', 0)
+    
 
     if K > 0 and beta > 0:
         fitted_V = K * (n ** beta)
         ax.plot(n, fitted_V, '-', color=colors[1], linewidth=2,
                 label=f'Heaps Law: V = {K:.1f} × n^{beta:.3f}')
-
-        # Add confidence interval (simplified)
-        std_err = heaps_results.get('std_err', 0)
-        if std_err > 0:
-            upper_bound = K * 1.1 * (n ** beta)
-            lower_bound = K * 0.9 * (n ** beta)
-            ax.fill_between(n, lower_bound, upper_bound, alpha=0.2, color=colors[1])
+        
+        # Add bootstrap confidence bands if available
+        if confidence_lower > 0 and confidence_upper > 0:
+            upper_V = K * (n ** confidence_upper)
+            lower_V = K * (n ** confidence_lower)
+            ax.fill_between(n, lower_V, upper_V, alpha=0.2, color=colors[1],
+                          label=f'95% Confidence Band (β: {confidence_lower:.3f}-{confidence_upper:.3f})')
+    
 
     ax.set_xlabel('Corpus Size (tokens)')
     ax.set_ylabel('Vocabulary Size (unique tokens)')
     ax.set_title('Heaps\' Law: Vocabulary Growth Analysis')
     ax.legend()
     ax.grid(True, alpha=0.3)
-
-    # Add statistics
+    
+    # Add statistics with warning if applicable
     r_squared = heaps_results.get('r_squared', 0)
-    stats_text = f"K = {K:.1f}\nβ = {beta:.3f}\nR² = {r_squared:.3f}"
-    ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=11,
-            verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3",
-                                               facecolor="lightgray", alpha=0.8))
+    valid_points = heaps_results.get('valid_points', len(corpus_sizes))
+    warning = heaps_results.get('warning', '')
+    
+    stats_text = f"K = {K:.1f}\nβ = {beta:.3f}\nR² = {r_squared:.3f}\nPoints = {valid_points}"
+    if warning:
+        stats_text += f"\n⚠️  {warning[:30]}..."  # Truncate long warnings
+    
+    ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=10,
+            verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", 
+                                               facecolor="lightyellow" if warning else "lightgray", 
+                                               alpha=0.8))
+    
+    # Add approximation note
+    ax.text(0.05, 0.02, "Note: Heaps law fitting is an approximation - interpret results carefully",
+            transform=ax.transAxes, fontsize=8, style='italic', alpha=0.7)
+    
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
 
     print(f"📈 Heaps plot saved: {output_path}")
+    if warning:
+        print(f"⚠️  {warning}")
 
 
 def create_wordcloud(frequencies: Counter,
