@@ -113,7 +113,8 @@ def calculate_tfidf(texts_by_year: Dict[str, List[str]],
 
                 # Create TF-IDF vectorizer with custom functions to avoid preprocessing issues
                 vectorizer = TfidfVectorizer(
-                    preprocessor=identity_preprocessor,  # Don't modify input
+                    analyzer="word",                     # Use word-level analysis
+                    preprocessor=identity_preprocessor,  # Don't modify input  
                     tokenizer=identity_tokenizer,        # Use pre-tokenized input
                     lowercase=False,                     # Don't lowercase (already handled)
                     min_df=min_df,
