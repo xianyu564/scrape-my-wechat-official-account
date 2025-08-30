@@ -421,8 +421,6 @@ def analyze_heaps_law(corpus_tokens: List[List[str]]) -> Dict[str, float]:
         
         final_ttr = len(vocabulary) / total_tokens if total_tokens > 0 else 0
         
-        result = {
-
             'K': K,
             'beta': beta,
             'r_squared': r_value ** 2,
