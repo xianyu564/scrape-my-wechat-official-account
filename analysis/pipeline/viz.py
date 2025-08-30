@@ -292,10 +292,6 @@ def create_zipf_panels(frequencies: Counter,
     fig.text(0.02, 0.02, stats_text, fontsize=10,
              bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7))
     
-    # Add approximation warning
-    fig.text(0.98, 0.02, "⚠️ Zipf law fitting is an approximation - interpret results carefully",
-             fontsize=8, style='italic', alpha=0.7, ha='right')
-    
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
