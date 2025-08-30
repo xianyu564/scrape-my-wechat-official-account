@@ -4,13 +4,11 @@ I/O utilities for corpus loading and year-based splitting
 """
 
 import os
-import json
 import re
-from pathlib import Path
-from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 import warnings
-from datetime import datetime
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -25,7 +23,7 @@ class Article:
     content: Optional[str] = None
 
 
-def load_corpus(root_dir: str, start_date: Optional[str] = None, 
+def load_corpus(root_dir: str, start_date: Optional[str] = None,
                 end_date: Optional[str] = None, years: Optional[List[str]] = None) -> List[Article]:
     """
     Load corpus from WeChat backup directory
@@ -41,47 +39,47 @@ def load_corpus(root_dir: str, start_date: Optional[str] = None,
     """
     articles = []
     root_path = Path(root_dir)
-    
+
     if not root_path.exists():
         warnings.warn(f"Root directory does not exist: {root_dir}")
         return articles
-    
+
     # Scan year directories
     for year_dir in root_path.iterdir():
         if not year_dir.is_dir() or not year_dir.name.isdigit():
             continue
-            
+
         year = year_dir.name
-        
+
         # Filter by years if specified
         if years and year not in years:
             continue
-            
+
         # Scan articles in year directory
         for article_dir in year_dir.iterdir():
             if not article_dir.is_dir():
                 continue
-                
+
             # Extract date from directory name
             match = re.match(r'(\d{4}-\d{2}-\d{2})', article_dir.name)
             if not match:
                 continue
-                
+
             date = match.group(1)
-            
+
             # Filter by date range if specified
             if start_date and date < start_date:
                 continue
             if end_date and date > end_date:
                 continue
-                
+
             title = article_dir.name.replace(f"{date}_", "")
-            
+
             # Look for content files
             md_file = article_dir / f"{article_dir.name}.md"
             html_file = article_dir / f"{article_dir.name}.html"
             meta_file = article_dir / "meta.json"
-            
+
             if md_file.exists():
                 article = Article(
                     date=date,
@@ -92,7 +90,7 @@ def load_corpus(root_dir: str, start_date: Optional[str] = None,
                     meta_path=str(meta_file) if meta_file.exists() else ""
                 )
                 articles.append(article)
-    
+
     # Sort by date
     articles.sort(key=lambda x: x.date)
     return articles
@@ -110,17 +108,17 @@ def read_text(article: Article) -> str:
     """
     if not article.md_path or not os.path.exists(article.md_path):
         return ""
-        
+
     try:
-        with open(article.md_path, 'r', encoding='utf-8') as f:
+        with open(article.md_path, encoding='utf-8') as f:
             content = f.read()
-            
+
         # Simple markdown cleanup - remove images, links, headers
         content = re.sub(r'!\[.*?\]\(.*?\)', '', content)  # Remove images
         content = re.sub(r'\[.*?\]\(.*?\)', '', content)   # Remove links
         content = re.sub(r'^#+\s*', '', content, flags=re.MULTILINE)  # Remove headers
         content = re.sub(r'\n+', '\n', content)  # Normalize newlines
-        
+
         return content.strip()
     except Exception as e:
         warnings.warn(f"Failed to read article {article.md_path}: {e}")
@@ -139,16 +137,16 @@ def get_corpus_stats(articles: List[Article]) -> Dict[str, Any]:
     """
     if not articles:
         return {}
-        
+
     years = sorted(set(article.year for article in articles))
     articles_by_year = {}
-    
+
     for article in articles:
         year = article.year
         if year not in articles_by_year:
             articles_by_year[year] = 0
         articles_by_year[year] += 1
-    
+
     return {
         'total_articles': len(articles),
         'years': years,
@@ -174,5 +172,5 @@ def split_by_year(articles: List[Article]) -> Dict[str, List[Article]]:
         if year not in by_year:
             by_year[year] = []
         by_year[year].append(article)
-    
+
     return by_year

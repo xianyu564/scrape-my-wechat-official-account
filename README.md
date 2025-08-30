@@ -9,13 +9,16 @@
   </p>
   
   <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;">
+    <a href="https://github.com/xianyu564/scrape-my-wechat-official-account/actions/workflows/ci.yml">
+      <img src="https://github.com/xianyu564/scrape-my-wechat-official-account/workflows/CI%2FCD%20Pipeline/badge.svg" alt="CI/CD Status" />
+    </a>
     <a href="https://opensource.org/licenses/MIT">
       <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License" />
     </a>
     <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
       <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg?style=for-the-badge" alt="CC BY-NC-SA 4.0" />
     </a>
-    <img src="https://img.shields.io/badge/Python-3.7+-blue.svg?style=for-the-badge&logo=python" alt="Python 3.7+" />
+    <img src="https://img.shields.io/badge/Python-3.9+-blue.svg?style=for-the-badge&logo=python" alt="Python 3.9+" />
     <img src="https://img.shields.io/badge/Status-Active%20Maintenance-brightgreen.svg?style=for-the-badge" alt="Active Maintenance" />
   </div>
 </div>

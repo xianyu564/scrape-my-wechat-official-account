@@ -9,9 +9,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "your-username"
+      - "xianyu564"
     assignees:
-      - "your-username"
+      - "xianyu564"
     commit-message:
       prefix: "pip"
       prefix-development: "pip-dev"
@@ -35,9 +35,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "your-username"
+      - "xianyu564"
     assignees:
-      - "your-username"
+      - "xianyu564"
     commit-message:
       prefix: "github-actions"
       include: "scope"

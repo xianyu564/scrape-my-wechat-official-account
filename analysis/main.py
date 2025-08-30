@@ -5,74 +5,107 @@ Two-phase design: (1) theory-only analysis, (2) presentation
 All knobs live here in main.py
 """
 
-import os
-import sys
-import json
-import pickle
 import argparse
+import json
+import os
+import pickle
+import sys
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-import warnings
+from typing import Any, Dict, List, Optional
 
 # Add pipeline to path
 sys.path.insert(0, str(Path(__file__).parent / "pipeline"))
 
 # Import pipeline modules
-from corpus_io import load_corpus, read_text, get_corpus_stats, split_by_year
-from tokenizer import MixedLanguageTokenizer
+from corpus_io import get_corpus_stats, load_corpus, read_text, split_by_year
 from ngrams import build_ngrams, get_ngram_stats
+from report import write_report
 from stats import (
-    calculate_frequencies, calculate_frequencies_by_year, calculate_tfidf,
-    analyze_zipf_law, analyze_heaps_law, calculate_lexical_metrics,
-    get_year_over_year_growth, save_summary_stats
+    analyze_heaps_law,
+    analyze_zipf_law,
+    calculate_frequencies,
+    calculate_frequencies_by_year,
+    calculate_lexical_metrics,
+    calculate_tfidf,
+    get_year_over_year_growth,
+    save_summary_stats,
 )
-from viz import (
+from tokenizer import MixedLanguageTokenizer
     create_zipf_panels, create_heaps_plot, create_wordcloud,
-    create_yearly_comparison_chart, create_growth_chart
+    create_yearly_comparison_chart, create_growth_chart, COLOR_SCHEMES
 )
 from report import write_report
+from performance import profiler, optimize_memory, benchmark_function
+from advanced_analysis import (
+    calculate_advanced_metrics, calculate_complexity_metrics,
+    export_analysis_results, validate_analysis_config, generate_analysis_report
+)
 
 
-def print_and_save_config(config: Dict[str, Any], output_dir: str) -> None:
+
+def print_and_save_config(config: Dict[str, Any], output_dir: str, 
+                         tokenizer_info: Optional[Dict] = None,
+                         font_path: Optional[str] = None) -> None:
     """
-    Print configuration to console and save to summary.json
+    Print configuration to console and save comprehensive snapshot to summary.json
     """
+    import platform
+    import time
+    from datetime import datetime
+    
+    # Enhance config with system and runtime information
+    enhanced_config = config.copy()
+    enhanced_config.update({
+        'system_info': {
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'timestamp': datetime.now().isoformat(),
+            'working_directory': os.getcwd()
+        },
+        'runtime_info': {
+            'tokenizer_used': tokenizer_info.get('tokenizer_type', 'unknown') if tokenizer_info else 'unknown',
+            'tokenizer_details': tokenizer_info if tokenizer_info else {},
+            'font_path_resolved': font_path,
+            'color_schemes_available': list(COLOR_SCHEMES.keys()) if 'COLOR_SCHEMES' in globals() else []
+        }
+    })
+    
     print("=" * 70)
     print("🔧 FINAL CONFIGURATION PARAMETERS")
     print("=" * 70)
-    
+
     # Print configuration
-    for section, params in config.items():
+    for section, params in enhanced_config.items():
         print(f"\n📋 {section.upper()}:")
         if isinstance(params, dict):
             for key, value in params.items():
                 print(f"  {key}: {value}")
         else:
             print(f"  {params}")
-    
+
     print("=" * 70)
-    
+
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Save to summary.json
     summary_path = os.path.join(output_dir, "summary.json")
-    summary_data = {"config": config}
-    
+    summary_data = {"config": enhanced_config}
+   
     # Load existing summary if it exists
     if os.path.exists(summary_path):
         try:
-            with open(summary_path, 'r', encoding='utf-8') as f:
+            with open(summary_path, encoding='utf-8') as f:
                 existing_data = json.load(f)
-            existing_data["config"] = config
+            existing_data["config"] = enhanced_config
             summary_data = existing_data
         except Exception:
             pass  # Use new summary data if loading fails
-    
+
     # Save updated summary
     with open(summary_path, 'w', encoding='utf-8') as f:
         json.dump(summary_data, f, ensure_ascii=False, indent=2)
-    
+
     print(f"💾 Configuration saved to: {summary_path}")
 
 
@@ -90,7 +123,7 @@ Examples:
   python analysis/main.py --tokenizer jieba --min-freq 3
         """
     )
-    
+
     # Execution control
     parser.add_argument('--analysis', action='store_true', default=None,
                        help='Run analysis phase (default: True)')
@@ -100,13 +133,13 @@ Examples:
                        help='Run visualization phase (default: True)')
     parser.add_argument('--no-visualization', dest='visualization', action='store_false',
                        help='Skip visualization phase')
-    
+
     # Data paths
     parser.add_argument('--corpus', type=str,
                        help='Corpus root directory')
     parser.add_argument('--output', type=str,
                        help='Output directory')
-    
+
     # Analysis parameters
     parser.add_argument('--max-n', type=int,
                        help='Maximum n-gram length (default: 8)')
@@ -118,11 +151,11 @@ Examples:
                        help='PMI threshold for phrase validation (default: 3.0)')
     parser.add_argument('--llr-threshold', type=float,
                        help='LLR threshold for phrase validation (default: 10.83)')
-    
+
     # Tokenizer parameters
     parser.add_argument('--tokenizer', choices=['auto', 'pkuseg', 'jieba'],
                        help='Tokenizer type (default: auto)')
-    
+
     # Time filtering
     parser.add_argument('--start-date', type=str,
                        help='Start date filter (YYYY-MM-DD)')
@@ -130,17 +163,35 @@ Examples:
                        help='End date filter (YYYY-MM-DD)')
     parser.add_argument('--years', type=str,
                        help='Year filter (comma-separated, e.g., 2021,2022)')
-    
+
     # Visualization parameters
     parser.add_argument('--font-path', type=str,
                        help='Path to Chinese font file')
-    parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm'],
+    parser.add_argument('--color-scheme', choices=['nature', 'science', 'calm', 'muted', 'solar'],
                        help='Color scheme for visualizations (default: nature)')
     
+    # Performance and export options
+    parser.add_argument('--export-format', choices=['json', 'csv', 'excel', 'all'], 
+                       default='all',
+                       help='Export format for results (default: all)')
+    parser.add_argument('--profile', action='store_true',
+                       help='Enable detailed performance profiling')
+    parser.add_argument('--bootstrap-samples', type=int, default=100,
+                       help='Number of bootstrap samples for confidence intervals (default: 100)')
+    parser.add_argument('--parallel', action='store_true',
+                       help='Enable parallel processing where available')
+    
+    # Advanced analysis options
+    parser.add_argument('--advanced-metrics', action='store_true',
+                       help='Calculate advanced linguistic metrics')
+    parser.add_argument('--complexity-analysis', action='store_true',
+                       help='Include syntactic complexity analysis')
+    
+
     # Reproducibility
     parser.add_argument('--seed', type=int,
                        help='Random seed for reproducible results (default: 42)')
-    
+
     return parser.parse_args()
 
 
@@ -180,16 +231,17 @@ def run_analysis(
     print("=" * 70)
     print("🧠 PHASE 1: THEORY-ONLY ANALYSIS")
     print("=" * 70)
-    
+
     # Set random seed for reproducibility
     import random
+
     import numpy as np
     random.seed(seed)
     np.random.seed(seed)
-    
+
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Load corpus
     print(f"📁 Loading corpus from: {corpus_root}")
     articles = load_corpus(
@@ -198,26 +250,26 @@ def run_analysis(
         end_date=end_date,
         years=years
     )
-    
+
     if not articles:
         raise ValueError("❌ No articles found in corpus")
-    
+
     corpus_stats = get_corpus_stats(articles)
     print(f"📊 Corpus loaded: {corpus_stats}")
-    
+
     # Initialize tokenizer
     print(f"🔤 Initializing tokenizer: {tokenizer_type}")
-    
+
     # Prepare user dictionary paths
     extra_user_dicts = []
     default_user_dict = "data/user_dict.zh.txt"
     tech_terms_dict = "data/tech_terms.txt"
-    
+
     if os.path.exists(default_user_dict):
         extra_user_dicts.append(default_user_dict)
     if os.path.exists(tech_terms_dict):
         extra_user_dicts.append(tech_terms_dict)
-    
+
     tokenizer = MixedLanguageTokenizer(
         tokenizer_type=tokenizer_type,
         extra_user_dicts=extra_user_dicts,
@@ -225,18 +277,18 @@ def run_analysis(
         stopwords_en_path=stopwords_en_path,
         allow_singletons_path=allow_singletons_path
     )
-    
+
     # Tokenize all articles
     print("📝 Tokenizing articles...")
     all_tokens = []
     articles_by_year = split_by_year(articles)
     tokens_by_year = {}
     texts_by_year = {}
-    
+
     for year, year_articles in articles_by_year.items():
         year_tokens = []
         year_texts = []
-        
+
         for article in year_articles:
             text = read_text(article)
             if text:
@@ -245,21 +297,21 @@ def run_analysis(
                     all_tokens.append(tokens)
                     year_tokens.append(tokens)
                     year_texts.append(text)
-        
+
         if year_tokens:
             tokens_by_year[year] = year_tokens
             texts_by_year[year] = year_texts
-    
+
     print(f"✅ Tokenized {len(all_tokens)} articles across {len(tokens_by_year)} years")
-    
+
     # Build variable-length n-grams
     print(f"🔢 Building n-grams: max_n={max_n}, collocation={collocation}")
-    
+
     # Flatten tokens for n-gram analysis
     flat_tokens = []
     for tokens in all_tokens:
         flat_tokens.extend(tokens)
-    
+
     merged_tokens, ngram_counts = build_ngrams(
         tokens=flat_tokens,
         max_n=max_n,
@@ -268,11 +320,11 @@ def run_analysis(
         pmi_threshold=pmi_threshold,
         llr_threshold=llr_threshold
     )
-    
+
     # Rebuild corpus with merged tokens
     merged_corpus = []
     merged_by_year = {}
-    
+
     start_idx = 0
     for i, original_tokens in enumerate(all_tokens):
         doc_length = len(original_tokens)
@@ -282,24 +334,24 @@ def run_analysis(
             if i < len(year_tokens):
                 doc_year = year
                 break
-        
+
         # Extract merged tokens for this document (approximation)
         end_idx = start_idx + doc_length
         doc_merged = merged_tokens[start_idx:end_idx] if end_idx <= len(merged_tokens) else merged_tokens[start_idx:]
         merged_corpus.append(doc_merged)
-        
+
         if doc_year:
             if doc_year not in merged_by_year:
                 merged_by_year[doc_year] = []
             merged_by_year[doc_year].append(doc_merged)
-        
+
         start_idx = end_idx
-    
+
     # Calculate statistics
     print("📊 Calculating frequency statistics...")
     freq_overall = calculate_frequencies(merged_corpus)
     freq_by_year = calculate_frequencies_by_year(merged_by_year)
-    
+
     print("🔍 Calculating TF-IDF...")
     tfidf_results = calculate_tfidf(
         texts_by_year=texts_by_year,
@@ -308,34 +360,34 @@ def run_analysis(
         max_df=tfidf_max_df,
         topk=tfidf_topk
     )
-    
+
     print("📈 Analyzing Zipf's law...")
     zipf_results = analyze_zipf_law(freq_overall)
-    
+
     print("📊 Analyzing Heaps' law...")
     heaps_results = analyze_heaps_law(merged_corpus)
-    
+
     print("🔤 Calculating lexical metrics...")
     lexical_metrics = calculate_lexical_metrics(
-        merged_corpus, 
+        merged_corpus,
         stopwords_zh=tokenizer.stopwords_zh if hasattr(tokenizer, 'stopwords_zh') else None,
         stopwords_en=tokenizer.stopwords_en if hasattr(tokenizer, 'stopwords_en') else None
     )
-    
+
     print("📅 Analyzing year-over-year growth...")
     growth_data = get_year_over_year_growth(freq_by_year, topk=20)
-    
+
     print("🔢 Collecting n-gram statistics...")
     ngram_stats = get_ngram_stats(merged_tokens)
     ngram_stats.update(ngram_counts)  # Add counts by length
-    
+
     # Validate n-gram detection
     detected_lengths = [n for n in range(1, max_n + 1) if ngram_counts.get(n, 0) > 0]
     if not detected_lengths:
         print("⚠️  WARNING: No n-grams detected, consider lowering min_freq")
     else:
         print(f"✅ N-gram lengths detected: {detected_lengths}")
-    
+
     # Prepare results
     analysis_results = {
         'corpus_stats': corpus_stats,
@@ -362,7 +414,7 @@ def run_analysis(
             'seed': seed
         }
     }
-    
+
     # Save summary statistics
     summary_path = os.path.join(output_dir, "summary.json")
     save_summary_stats(
@@ -375,15 +427,15 @@ def run_analysis(
         ngram_stats=ngram_stats,
         output_path=summary_path
     )
-    
+
     # Save complete results for phase 2
     results_path = os.path.join(output_dir, "analysis_results.pkl")
     with open(results_path, 'wb') as f:
         pickle.dump(analysis_results, f)
-    
+
     print(f"💾 Analysis results saved to: {results_path}")
     print("✅ Phase 1 complete!\n")
-    
+
     return analysis_results
 
 
@@ -413,22 +465,22 @@ def run_presentation(
     print("=" * 70)
     print("🎨 PHASE 2: PRESENTATION")
     print("=" * 70)
-    
+
     # Load analysis results
     results_path = os.path.join(output_dir, "analysis_results.pkl")
     if not os.path.exists(results_path):
         raise FileNotFoundError(f"❌ Analysis results not found: {results_path}")
-    
+
     print("📂 Loading analysis results...")
     with open(results_path, 'rb') as f:
         results = pickle.load(f)
-    
+
     generated_files = {}
-    
+
     # Generate scientific plots
     if generate_scientific_plots:
         print("📈 Generating scientific plots...")
-        
+
         # Zipf law panels
         zipf_path = os.path.join(output_dir, "fig_zipf_panels.png")
         create_zipf_panels(
@@ -439,7 +491,7 @@ def run_presentation(
             color_scheme=color_scheme
         )
         generated_files['zipf_panels'] = zipf_path
-        
+
         # Heaps law plot
         heaps_path = os.path.join(output_dir, "fig_heaps.png")
         create_heaps_plot(
@@ -450,7 +502,7 @@ def run_presentation(
             color_scheme=color_scheme
         )
         generated_files['heaps_plot'] = heaps_path
-        
+
         # Yearly comparison chart
         yearly_comparison_path = os.path.join(output_dir, "fig_yearly_comparison.png")
         create_yearly_comparison_chart(
@@ -461,7 +513,7 @@ def run_presentation(
             color_scheme=color_scheme
         )
         generated_files['yearly_comparison'] = yearly_comparison_path
-        
+
         # Growth chart
         if results['growth_data']:
             growth_path = os.path.join(output_dir, "fig_growth.png")
@@ -473,11 +525,11 @@ def run_presentation(
                 color_scheme=color_scheme
             )
             generated_files['growth_chart'] = growth_path
-    
+
     # Generate word clouds
     if generate_wordclouds:
         print("🎨 Generating word clouds...")
-        
+
         # Overall word cloud
         overall_cloud_path = os.path.join(output_dir, "cloud_overall.png")
         create_wordcloud(
@@ -489,7 +541,7 @@ def run_presentation(
             color_scheme=color_scheme
         )
         generated_files['cloud_overall'] = overall_cloud_path
-        
+
         # Yearly word clouds
         yearly_clouds = []
         for year, freq in results['freq_by_year'].items():
@@ -503,9 +555,9 @@ def run_presentation(
                 color_scheme=color_scheme
             )
             yearly_clouds.append(cloud_path)
-        
+
         generated_files['yearly_clouds'] = yearly_clouds
-    
+
     # Generate report
     if generate_report:
         print("📝 Generating markdown report...")
@@ -524,7 +576,7 @@ def run_presentation(
             tokenizer_info=results['tokenizer_info']
         )
         generated_files['report'] = report_path
-    
+
     print("✅ Phase 2 complete!")
     print("\n📁 Generated files:")
     for file_type, path in generated_files.items():
@@ -532,7 +584,7 @@ def run_presentation(
             print(f"  - {file_type}: {len(path)} files")
         else:
             print(f"  - {file_type}: {os.path.basename(path)}")
-    
+
     return generated_files
 
 
@@ -542,63 +594,63 @@ def main():
     """
     # Parse command line arguments
     args = parse_arguments()
-    
+
     # =================================================================
     # 🔧 CONFIGURATION PARAMETERS
     # =================================================================
-    
+
     # === Execution Control ===
     RUN_ANALYSIS = args.analysis if args.analysis is not None else True
     RUN_VISUALIZATION = args.visualization if args.visualization is not None else True
-    
+
     # === Data Paths ===
     CORPUS_ROOT = args.corpus or "../Wechat-Backup/文不加点的张衔瑜"
     OUTPUT_DIR = args.output or "out"
-    
+
     # === N-gram & Collocation Parameters ===
     MAX_N = args.max_n or 8
     MIN_FREQ = args.min_freq or 5
     COLLOCATION = args.collocation or "pmi"
     PMI_THRESHOLD = args.pmi_threshold or 3.0
     LLR_THRESHOLD = args.llr_threshold or 10.83
-    
+
     # === Tokenization Parameters ===
     TOKENIZER_TYPE = args.tokenizer or "auto"
     STOPWORDS_ZH_PATH = "data/stopwords.zh.txt"
     STOPWORDS_EN_PATH = "data/stopwords.en.txt"
     ALLOW_SINGLETONS_PATH = "data/allow_singletons.zh.txt"
-    
+
     # === TF-IDF Parameters ===
     TFIDF_MIN_DF = 1
     TFIDF_MAX_DF = 0.98
     TFIDF_TOPK = 150
-    
+
     # === Time Filtering ===
     START_DATE = args.start_date
     END_DATE = args.end_date
     YEARS = args.years.split(',') if args.years else None
-    
+
     # === Visualization Parameters ===
     GENERATE_WORDCLOUDS = True
     GENERATE_SCIENTIFIC_PLOTS = True
     GENERATE_REPORT = True
-    
+
     WORDCLOUD_MAX_WORDS = 200
     YEARLY_WORDCLOUD_MAX_WORDS = 100
-    
+
     FONT_PATH = args.font_path
     COLOR_SCHEME = args.color_scheme or "nature"
-    
+
     YEARLY_COMPARISON_TOP_N = 20
     GROWTH_CHART_TOP_N = 20
-    
+
     # === Reproducibility ===
     SEED = args.seed or 42
-    
+
     # =================================================================
     # 📋 PRINT AND SAVE FINAL CONFIGURATION
     # =================================================================
-    
+
     config = {
         "execution": {
             "run_analysis": RUN_ANALYSIS,
@@ -644,17 +696,49 @@ def main():
             "seed": SEED
         }
     }
-    
+
     print_and_save_config(config, OUTPUT_DIR)
+
+    # =================================================================
+    # ✅ CONFIGURATION VALIDATION
+    # =================================================================
+    
+    print("\n🔍 Validating configuration...")
+    config_flat = {
+        'corpus_path': CORPUS_ROOT,
+        'output_dir': OUTPUT_DIR,
+        'min_df': TFIDF_MIN_DF,
+        'max_df': TFIDF_MAX_DF,
+        'topk': TFIDF_TOPK,
+        'color_scheme': COLOR_SCHEME,
+        'years': YEARS
+    }
+    
+    is_valid, errors = validate_analysis_config(config_flat)
+    if not is_valid:
+        print("❌ Configuration validation failed:")
+        for error in errors:
+            print(f"   • {error}")
+        return 1
+    else:
+        print("✅ Configuration validation passed")
     
     # =================================================================
-    # 🚀 EXECUTION
+    # 🚀 EXECUTION WITH PERFORMANCE MONITORING
     # =================================================================
     
+    # Initialize performance profiler
+    profiler.clear()
+    print("\n📊 Performance monitoring enabled")
+    
+    # Memory optimization before starting
+    optimize_memory()
+    
+
     try:
         # Phase 1: Analysis
         if RUN_ANALYSIS:
-            results = run_analysis(
+            _ = run_analysis(
                 corpus_root=CORPUS_ROOT,
                 output_dir=OUTPUT_DIR,
                 max_n=MAX_N,
@@ -674,21 +758,21 @@ def main():
                 allow_singletons_path=ALLOW_SINGLETONS_PATH,
                 seed=SEED
             )
-            
+
             # Validation check
             summary_path = os.path.join(OUTPUT_DIR, "summary.json")
-            with open(summary_path, 'r', encoding='utf-8') as f:
+            with open(summary_path, encoding='utf-8') as f:
                 summary = json.load(f)
-            
+
             detected_lengths = summary.get('ngram_lengths_detected', [])
             if not detected_lengths or max(detected_lengths) < 2:
                 print("⚠️  WARNING: Limited n-gram detection. Consider lowering MIN_FREQ.")
             else:
                 print(f"✅ Self-check passed: n-gram lengths {detected_lengths}")
-        
+
         # Phase 2: Visualization
         if RUN_VISUALIZATION:
-            generated_files = run_presentation(
+            _ = run_presentation(
                 output_dir=OUTPUT_DIR,
                 generate_wordclouds=GENERATE_WORDCLOUDS,
                 generate_scientific_plots=GENERATE_SCIENTIFIC_PLOTS,
@@ -700,15 +784,45 @@ def main():
                 yearly_comparison_top_n=YEARLY_COMPARISON_TOP_N,
                 growth_chart_top_n=GROWTH_CHART_TOP_N
             )
-        
+
         print("\n🎉 ANALYSIS COMPLETE!")
         print("=" * 70)
+        
+        # Performance summary
+        profiler.print_summary()
+        
+        # Export results in multiple formats if requested
+        if RUN_ANALYSIS:
+            print("\n📤 Exporting analysis results...")
+            summary_path = os.path.join(OUTPUT_DIR, "summary.json")
+            if os.path.exists(summary_path):
+                with open(summary_path, 'r', encoding='utf-8') as f:
+                    results_data = json.load(f)
+                
+                # Export in multiple formats
+                export_files = export_analysis_results(
+                    results_data, 
+                    OUTPUT_DIR, 
+                    format='all'  # JSON, CSV, and Excel
+                )
+                
+                # Generate comprehensive text report
+                print("\n📋 Generating comprehensive report...")
+                text_report = generate_analysis_report(results_data, config)
+                
+                report_path = os.path.join(OUTPUT_DIR, "comprehensive_report.txt")
+                with open(report_path, 'w', encoding='utf-8') as f:
+                    f.write(text_report)
+                print(f"✅ Comprehensive report saved: {report_path}")
+        
+        # Final memory cleanup
+        optimize_memory()
         
         if RUN_ANALYSIS and not RUN_VISUALIZATION:
             print("💡 Tip: Set --visualization to generate visuals")
         elif RUN_VISUALIZATION and not RUN_ANALYSIS:
             print("💡 Tip: Set --analysis to rerun analysis")
-        
+
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
