@@ -45,7 +45,7 @@ def _find_system_chinese_fonts() -> List[str]:
     chinese_font_names = [
         'SimHei', 'SimSun', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
         'STHeiti', 'STSong', 'Source Han Sans', 'Noto Sans CJK', 'WenQuanYi',
-        'AR PL UMing', 'AR PL UKai', 'Liberation Sans', 'DejaVu Sans'
+        'AR PL UMing', 'AR PL UKai', 'NotoSansCJK', 'NotoSerifCJK'
     ]
     
     # System font directories to search
@@ -69,6 +69,9 @@ def _find_system_chinese_fonts() -> List[str]:
                 if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
                     found_fonts.append(str(font_file))
             for font_file in font_path.rglob('*.otf'):
+                if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
+                    found_fonts.append(str(font_file))
+            for font_file in font_path.rglob('*.ttc'):
                 if any(name.lower() in font_file.name.lower() for name in chinese_font_names):
                     found_fonts.append(str(font_file))
     

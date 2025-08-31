@@ -1,0 +1,33 @@
+================================================================================
+📊 COMPREHENSIVE LINGUISTIC ANALYSIS REPORT
+================================================================================
+
+🔧 ANALYSIS CONFIGURATION
+----------------------------------------
+corpus_path................... ../Wechat-Backup/文不加点的张衔瑜
+analysis_date................. 2025-08-31
+tokenizer..................... jieba
+
+📊 ZIPF'S LAW ANALYSIS
+----------------------------------------
+Slope (α):........................ -0.974
+R-squared:........................ 0.968
+Intercept:........................ 10.178
+✅ Strong Zipfian distribution
+
+📈 HEAPS' LAW ANALYSIS
+----------------------------------------
+K parameter:...................... 8.785
+β parameter:...................... 0.692
+R-squared:........................ 0.995
+95% CI for β:..................... [0.000, 0.000]
+⚠️  Fast vocabulary growth
+
+⚠️  INTERPRETATION NOTES
+----------------------------------------
+• Zipf and Heaps law analyses are approximations
+• Small corpora may produce unreliable estimates
+• Results should be interpreted in linguistic context
+• Confidence intervals indicate estimation uncertainty
+
+================================================================================
