@@ -251,9 +251,6 @@ def calculate_lexical_metrics(corpus_tokens: List[List[str]],
     else:
         maas_ttr = 0.0
     
-    # Optimized lexical density calculation
-    # Combine stopwords into a single set for faster lookup
-
     stopwords = set()
     if stopwords_zh:
         stopwords.update(stopwords_zh)
