@@ -105,7 +105,7 @@ def generate_wordcloud_for_years(
     
     # 生成整体词云 / Generate overall word cloud
     if len(all_tokens) > 0:
-        overall_cloud_path = os.path.join(output_dir, "wordcloud_complete.png")
+        overall_cloud_path = os.path.join(output_dir, "cloud_complete.png")
         print("🎨 生成完整数据词云... / Generating complete dataset word cloud...")
         
         date_range = ""
@@ -129,7 +129,14 @@ def generate_wordcloud_for_years(
         print("🎨 生成年度词云... / Generating yearly word clouds...")
         for year, freq in freq_by_year.items():
             if freq:  # 确保有数据 / Ensure there's data
-                yearly_cloud_path = os.path.join(output_dir, f"wordcloud_{year}.png")
+                # 检查是否存在原始的词云文件，避免覆盖
+                # Check if original word cloud exists to avoid overwriting
+                original_cloud_path = os.path.join(output_dir, f"cloud_{year}.png")
+                if os.path.exists(original_cloud_path):
+                    print(f"⚠️  跳过 {year} 年: 原始词云已存在 / Skipping {year}: original word cloud exists")
+                    continue
+                    
+                yearly_cloud_path = os.path.join(output_dir, f"cloud_{year}.png")
                 create_wordcloud(
                     frequencies=freq,
                     output_path=yearly_cloud_path,
@@ -171,7 +178,7 @@ python generate_wordclouds.py --output custom_clouds --max-words 300 --color-sch
                        default="../Wechat-Backup/文不加点的张衔瑜",
                        help='语料库根目录 / Corpus root directory')
     parser.add_argument('--output', type=str,
-                       default="wordcloud_output",
+                       default="out",
                        help='输出目录 / Output directory')
     
     # 时间筛选 / Time filtering

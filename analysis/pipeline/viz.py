@@ -45,7 +45,8 @@ def _find_system_chinese_fonts() -> List[str]:
     chinese_font_names = [
         'SimHei', 'SimSun', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
         'STHeiti', 'STSong', 'Source Han Sans', 'Noto Sans CJK', 'WenQuanYi',
-        'AR PL UMing', 'AR PL UKai', 'NotoSansCJK', 'NotoSerifCJK'
+        'AR PL UMing', 'AR PL UKai', 'NotoSansCJK', 'NotoSerifCJK',
+        'wqy-zenhei', 'wqy-microhei', 'noto', 'cjk'
     ]
     
     # System font directories to search
@@ -126,10 +127,7 @@ def setup_chinese_font(font_path: Optional[str] = None) -> str:
     except Exception as e:
         warnings.warn(f"Font detection failed: {e}")
     
-    # Fallback to matplotlib's default handling
-    print("⚠️  Using system default font (Chinese characters may not display properly)")
-    return ""
-
+    # Try matplotlib's font manager as fallback
     try:
         # Check for installed fonts that support Chinese
         chinese_font_families = [
@@ -154,9 +152,13 @@ def setup_chinese_font(font_path: Optional[str] = None) -> str:
                         print(f"✅ Using system font: {font_family} ({font.fname})")
                         return font.fname
                 print(f"✅ Using system font: {font_family}")
-                return None  # Font available but no file path found
+                return ""  # Font available but no file path found
     except Exception as e:
         warnings.warn(f"Font manager search failed: {e}")
+    
+    # Final fallback
+    print("⚠️  Using system default font (Chinese characters may not display properly)")
+    return ""
 
     # Fallback: Try to find font files in common locations
     chinese_fonts = [
