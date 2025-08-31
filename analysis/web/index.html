@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式词云 - 微信文章分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        select, input[type="range"], button {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input[type="range"]:focus, button:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #495057;
+            font-size: 16px;
+        }
+
+        .wordcloud-container {
+            padding: 30px;
+            min-height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #wordcloud {
+            width: 100%;
+            height: 600px;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #6c757d;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .word-details {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-width: 200px;
+            display: none;
+            z-index: 1001;
+        }
+
+        .word-details h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .year-comparison {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .year-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .year-item:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                justify-content: space-between;
+            }
+
+            .stats {
+                justify-content: center;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .wordcloud-container {
+                padding: 15px;
+            }
+
+            #wordcloud {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📊 交互式词云分析</h1>
+            <p>基于微信公众号文章的词频分析与可视化</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="yearSelect">年份选择:</label>
+                <select id="yearSelect">
+                    <option value="overall">全部年份</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="maxWords">显示词数:</label>
+                <input type="range" id="maxWords" min="50" max="300" value="150" step="10">
+                <span id="maxWordsValue">150</span>
+            </div>
+
+            <div class="control-group">
+                <label for="colorScheme">配色方案:</label>
+                <select id="colorScheme">
+                    <option value="nature">自然</option>
+                    <option value="science">科技</option>
+                    <option value="warm">温暖</option>
+                    <option value="cool">冷色</option>
+                    <option value="monochrome">单色</option>
+                </select>
+            </div>
+
+            <button id="refreshBtn">🔄 刷新</button>
+        </div>
+
+        <div class="controls">
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">总词数</div>
+                    <div class="stat-value" id="totalWords">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">独特词汇</div>
+                    <div class="stat-value" id="uniqueWords">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">当前年份</div>
+                    <div class="stat-value" id="currentYear">全部</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">文档数</div>
+                    <div class="stat-value" id="documentCount">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wordcloud-container">
+            <div id="wordcloud">
+                <div class="loading">正在加载词云数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+    
+    <div class="word-details" id="wordDetails">
+        <h3 id="selectedWord">词汇详情</h3>
+        <div class="year-comparison" id="yearComparison">
+            <div class="year-item">
+                <span>年份</span>
+                <span>频次</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom word cloud implementation using SVG -->
+    
+    <script>
+        class SimpleWordCloud {
+            constructor(container, options = {}) {
+                this.container = container;
+                this.options = {
+                    width: options.width || 800,
+                    height: options.height || 600,
+                    padding: options.padding || 20,
+                    fontFamily: options.fontFamily || '"Microsoft YaHei", "Segoe UI", sans-serif',
+                    ...options
+                };
+                this.svg = null;
+                this.words = [];
+            }
+            
+            setData(wordList) {
+                this.words = wordList.map((word, index) => ({
+                    text: word[0],
+                    size: word[1],
+                    fontSize: this.calculateFontSize(word[1], wordList),
+                    index: index
+                }));
+            }
+            
+            calculateFontSize(frequency, wordList) {
+                const maxFreq = Math.max(...wordList.map(w => w[1]));
+                const minFreq = Math.min(...wordList.map(w => w[1]));
+                const maxFont = 48;
+                const minFont = 12;
+                
+                if (maxFreq === minFreq) return maxFont;
+                
+                const ratio = (frequency - minFreq) / (maxFreq - minFreq);
+                return Math.round(minFont + ratio * (maxFont - minFont));
+            }
+            
+            render(colorFunc, onHover, onClick) {
+                this.container.innerHTML = '';
+                
+                this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                this.svg.setAttribute('width', this.options.width);
+                this.svg.setAttribute('height', this.options.height);
+                this.svg.style.width = '100%';
+                this.svg.style.height = '100%';
+                this.svg.style.fontFamily = this.options.fontFamily;
+                
+                this.container.appendChild(this.svg);
+                
+                // Simple spiral layout
+                const centerX = this.options.width / 2;
+                const centerY = this.options.height / 2;
+                
+                let positions = [];
+                
+                this.words.forEach((word, index) => {
+                    const angle = index * 0.5;
+                    const radius = Math.sqrt(index) * 15;
+                    
+                    let x = centerX + radius * Math.cos(angle);
+                    let y = centerY + radius * Math.sin(angle);
+                    
+                    // Ensure words stay within bounds
+                    x = Math.max(this.options.padding, Math.min(x, this.options.width - this.options.padding));
+                    y = Math.max(this.options.padding + word.fontSize, Math.min(y, this.options.height - this.options.padding));
+                    
+                    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    textElement.setAttribute('x', x);
+                    textElement.setAttribute('y', y);
+                    textElement.setAttribute('text-anchor', 'middle');
+                    textElement.setAttribute('dominant-baseline', 'middle');
+                    textElement.setAttribute('font-size', word.fontSize);
+                    textElement.setAttribute('fill', colorFunc ? colorFunc(word.text, word.size, word.fontSize) : '#333');
+                    textElement.style.cursor = 'pointer';
+                    textElement.style.transition = 'all 0.3s ease';
+                    textElement.textContent = word.text;
+                    
+                    // Add hover effects
+                    textElement.addEventListener('mouseenter', (e) => {
+                        textElement.style.transform = 'scale(1.1)';
+                        textElement.style.opacity = '0.8';
+                        if (onHover) onHover([word.text, word.size], null, e);
+                    });
+                    
+                    textElement.addEventListener('mouseleave', (e) => {
+                        textElement.style.transform = 'scale(1)';
+                        textElement.style.opacity = '1';
+                        if (onHover) onHover(null, null, e);
+                    });
+                    
+                    textElement.addEventListener('click', (e) => {
+                        if (onClick) onClick([word.text, word.size], null, e);
+                    });
+                    
+                    this.svg.appendChild(textElement);
+                });
+            }
+        }
+
+        class InteractiveWordCloud {
+            constructor() {
+                this.data = null;
+                this.currentWords = [];
+                this.currentYear = 'overall';
+                this.maxWords = 150;
+                this.colorScheme = 'nature';
+                this.wordCloud = null;
+                
+                this.colorSchemes = {
+                    nature: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'],
+                    science: ['#2E8B57', '#4682B4', '#CD853F', '#DC143C', '#9932CC', '#FF8C00'],
+                    warm: ['#FF6B6B', '#FF8E53', '#FF6B9D', '#F093FB', '#F5576C', '#4FACFE'],
+                    cool: ['#667eea', '#764ba2', '#6B73FF', '#9DDBAD', '#667DB6', '#0082c8'],
+                    monochrome: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6', '#bdc3c7', '#ecf0f1']
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.loadData();
+                    this.setupEventListeners();
+                    this.populateYearSelect();
+                    this.initWordCloud();
+                    this.updateWordCloud();
+                } catch (error) {
+                    console.error('初始化失败:', error);
+                    document.querySelector('.loading').textContent = '数据加载失败，请检查数据文件';
+                }
+            }
+            
+            async loadData() {
+                const response = await fetch('./wordcloud_data.json');
+                this.data = await response.json();
+                console.log('数据加载完成:', this.data);
+            }
+            
+            initWordCloud() {
+                const container = document.getElementById('wordcloud');
+                this.wordCloud = new SimpleWordCloud(container, {
+                    width: 800,
+                    height: 600
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('yearSelect').addEventListener('change', (e) => {
+                    this.currentYear = e.target.value;
+                    this.updateWordCloud();
+                });
+                
+                document.getElementById('maxWords').addEventListener('input', (e) => {
+                    this.maxWords = parseInt(e.target.value);
+                    document.getElementById('maxWordsValue').textContent = this.maxWords;
+                });
+                
+                document.getElementById('maxWords').addEventListener('change', () => {
+                    this.updateWordCloud();
+                });
+                
+                document.getElementById('colorScheme').addEventListener('change', (e) => {
+                    this.colorScheme = e.target.value;
+                    this.updateWordCloud();
+                });
+                
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    this.updateWordCloud();
+                });
+                
+                // Close word details on click outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.word-details') && !e.target.closest('#wordcloud')) {
+                        document.getElementById('wordDetails').style.display = 'none';
+                    }
+                });
+            }
+            
+            populateYearSelect() {
+                const yearSelect = document.getElementById('yearSelect');
+                
+                this.data.years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year + '年';
+                    yearSelect.appendChild(option);
+                });
+            }
+            
+            updateWordCloud() {
+                const loadingElement = document.querySelector('.loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'block';
+                }
+                
+                const yearData = this.currentYear === 'overall' 
+                    ? this.data.overall 
+                    : this.data.by_year[this.currentYear];
+                
+                if (!yearData) {
+                    console.error('未找到年份数据:', this.currentYear);
+                    return;
+                }
+                
+                this.currentWords = yearData.words.slice(0, this.maxWords);
+                
+                // Update statistics
+                this.updateStats(yearData);
+                
+                // Prepare data for word cloud
+                const list = this.currentWords.map(word => [word.text, word.size]);
+                
+                // Generate color function
+                const colors = this.colorSchemes[this.colorScheme];
+                const colorFunc = (word, weight, fontSize) => {
+                    return colors[Math.abs(word.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length];
+                };
+                
+                // Create wordcloud
+                this.wordCloud.setData(list);
+                this.wordCloud.render(
+                    colorFunc,
+                    (item, dimension, event) => {
+                        if (item) {
+                            this.showTooltip(event, item[0], item[1]);
+                        } else {
+                            this.hideTooltip();
+                        }
+                    },
+                    (item, dimension, event) => {
+                        if (item) {
+                            this.showWordDetails(item[0]);
+                        }
+                    }
+                );
+                
+                setTimeout(() => {
+                    const loadingElement = document.querySelector('.loading');
+                    if (loadingElement) {
+                        loadingElement.style.display = 'none';
+                    }
+                }, 500);
+            }
+            
+            updateStats(yearData) {
+                document.getElementById('totalWords').textContent = yearData.total_words.toLocaleString();
+                document.getElementById('uniqueWords').textContent = yearData.unique_words.toLocaleString();
+                document.getElementById('currentYear').textContent = this.currentYear === 'overall' ? '全部' : this.currentYear + '年';
+                
+                const docCount = this.currentYear === 'overall' 
+                    ? this.data.metadata.total_documents
+                    : yearData.documents || 0;
+                document.getElementById('documentCount').textContent = docCount;
+            }
+            
+            showTooltip(event, word, frequency) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `<strong>${word}</strong><br>频次: ${frequency}`;
+                tooltip.style.left = event.pageX + 10 + 'px';
+                tooltip.style.top = event.pageY - 10 + 'px';
+                tooltip.style.opacity = 1;
+            }
+            
+            hideTooltip() {
+                document.getElementById('tooltip').style.opacity = 0;
+            }
+            
+            showWordDetails(word) {
+                const details = document.getElementById('wordDetails');
+                const selectedWord = document.getElementById('selectedWord');
+                const yearComparison = document.getElementById('yearComparison');
+                
+                selectedWord.textContent = `"${word}" 详情`;
+                
+                // Build year comparison
+                let comparisonHTML = '<div class="year-item"><span>年份</span><span>频次</span></div>';
+                
+                this.data.years.forEach(year => {
+                    const yearData = this.data.by_year[year];
+                    const wordData = yearData.words.find(w => w.text === word);
+                    const frequency = wordData ? wordData.size : 0;
+                    
+                    comparisonHTML += `
+                        <div class="year-item">
+                            <span>${year}年</span>
+                            <span>${frequency}</span>
+                        </div>
+                    `;
+                });
+                
+                // Overall frequency
+                const overallWordData = this.data.overall.words.find(w => w.text === word);
+                const overallFreq = overallWordData ? overallWordData.size : 0;
+                comparisonHTML += `
+                    <div class="year-item" style="border-top: 2px solid #667eea; margin-top: 5px; padding-top: 5px;">
+                        <span><strong>总计</strong></span>
+                        <span><strong>${overallFreq}</strong></span>
+                    </div>
+                `;
+                
+                yearComparison.innerHTML = comparisonHTML;
+                details.style.display = 'block';
+            }
+        }
+        
+        // Initialize the interactive word cloud when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new InteractiveWordCloud();
+        });
+    </script>
+</body>
+</html>
