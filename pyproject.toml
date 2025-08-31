@@ -85,7 +85,7 @@ extend-exclude = '''
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config --cov=script --cov=analysis --cov-report=term-missing --cov-report=xml --cov-fail-under=1"
-testpaths = ["tests"]
+testpaths = ["analysis/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -125,7 +125,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**/*" = ["B011", "D"]
+"analysis/tests/**/*" = ["B011", "D"]
 
 [tool.mypy]
 python_version = "3.9"
@@ -150,7 +150,7 @@ exclude = [
 [tool.coverage.run]
 source = ["script", "analysis"]
 omit = [
-    "*/tests/*",
+    "*/analysis/tests/*",
     "*/test_*",
     "*/__pycache__/*",
     "analysis/main_old.py",  # Legacy file

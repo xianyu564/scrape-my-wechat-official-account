@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 # Add project root to path to import modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 class TestAnalysisPipeline:

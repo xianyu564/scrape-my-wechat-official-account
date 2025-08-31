@@ -23,23 +23,23 @@ install-dev: install  ## 安装开发依赖（包括可选依赖）
 
 # Testing
 test:  ## 运行测试套件
-	$(PYTHON) -m pytest tests/ -v
+	$(PYTHON) -m pytest analysis/tests/ -v
 
 test-coverage:  ## 运行测试并生成覆盖率报告
-	$(PYTHON) -m pytest tests/ -v --cov=script --cov=analysis --cov-report=term-missing --cov-report=html
+	$(PYTHON) -m pytest analysis/tests/ -v --cov=script --cov=analysis --cov-report=term-missing --cov-report=html
 
 test-quiet:  ## 安静模式运行测试
-	$(PYTHON) -m pytest tests/ -q
+	$(PYTHON) -m pytest analysis/tests/ -q
 
 # Code quality
 lint:  ## 运行 ruff 代码检查
-	ruff check script/ analysis/ tests/
+	ruff check script/ analysis/ 
 
 lint-fix:  ## 运行 ruff 并自动修复问题
-	ruff check script/ analysis/ tests/ --fix
+	ruff check script/ analysis/ --fix
 
 format:  ## 使用 ruff 格式化代码
-	ruff format script/ analysis/ tests/
+	ruff format script/ analysis/ 
 
 type:  ## 运行 mypy 类型检查
 	mypy script/ analysis/ --ignore-missing-imports
@@ -95,7 +95,7 @@ status:  ## 显示项目状态
 	@echo "Python version: $$($(PYTHON) --version)"
 	@echo "Pip version: $$($(PYTHON) -m pip --version | cut -d' ' -f1-2)"
 	@echo "Project directory: $$(pwd)"
-	@echo "Tests directory: $$(test -d tests && echo 'exists' || echo 'missing')"
+	@echo "Tests directory: $$(test -d analysis/tests && echo 'exists' || echo 'missing')"
 	@echo "Config file: $$(test -f env.json && echo 'exists' || echo 'missing (use env.json.EXAMPLE)')"
 	@echo "=== Dependencies ==="
 	@$(PYTHON) -c "import requests, bs4, lxml; print('✅ Core dependencies: OK')" || echo "❌ Core dependencies: Missing"
