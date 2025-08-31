@@ -1,5 +1,13 @@
 # 词云生成指南 / Word Cloud Generation Guide
 
+> 📊 **完整覆盖**: 本系统现已提供2017-2025全年份高质量词云，支持完整中文显示
+
+## 备份位置 / Backup Location
+
+🗂️ **所有词云已备份至**: [`.github/assets/wordclouds/`](../.github/assets/wordclouds/)
+
+此备份确保词云文件的长期保存，供文档引用和研究使用。
+
 ## 可用的词云文件 / Available Word Cloud Files
 
 ### 年度词云 / Yearly Word Clouds

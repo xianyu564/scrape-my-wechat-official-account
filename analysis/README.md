@@ -112,7 +112,10 @@ python main.py
 
 ### Word Clouds
 - `out/cloud_overall.png` - Overall corpus word cloud
-- `out/cloud_YYYY.png` - Individual yearly word clouds
+- `out/cloud_YYYY.png` - Individual yearly word clouds (2017-2025)
+- `out/cloud_complete.png` - Complete dataset word cloud
+
+📁 **Backup Location**: All word clouds are backed up to [`.github/assets/wordclouds/`](../.github/assets/wordclouds/) for preservation and reference.
 
 ### Report
 - `out/report.md` - Complete linguistic analysis report

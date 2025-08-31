@@ -291,6 +291,34 @@ Wechat-Backup/<微信公众号名称>/
 
 ## 🧪 二次利用：语料再分析与 AI 再训练
 
+### 📊 语言学分析与词云生成 (已实现)
+
+本项目现已具备**成熟的语料分析系统**，提供：
+
+- **🎨 高质量词云生成**: 覆盖2017-2025全年份，支持中文显示，备份于 [`.github/assets/wordclouds/`](.github/assets/wordclouds/)
+- **📈 科学级语言学分析**: Zipf定律、Heaps定律、TF-IDF、词汇多样性等指标
+- **🔤 智能分词与N-gram**: 支持中英混合文本，可变长度n-gram分析
+- **📋 自动化报告**: 完整的数据驱动分析报告生成
+
+**快速开始分析:**
+```bash
+cd analysis/
+python main.py  # 完整分析 + 可视化
+```
+
+**自定义词云生成:**
+```bash
+# 特定时间段 (如 2020.08-2024.12)
+python analysis/generate_wordclouds.py --start-date 2020-08-01 --end-date 2024-12-31
+
+# 特定年份
+python analysis/generate_wordclouds.py --years 2020,2021,2022,2023,2024
+```
+
+详细文档：[`analysis/README.md`](analysis/README.md) | [`analysis/WORDCLOUD_GUIDE.md`](analysis/WORDCLOUD_GUIDE.md)
+
+### 🔍 语料浏览与研究起点
+
 - 从这里开始：[`Wechat-Backup/文不加点的张衔瑜/目录.md`](Wechat-Backup/文不加点的张衔瑜/目录.md)（编年浏览）或 [`合集.md`](Wechat-Backup/文不加点的张衔瑜/合集.md)（主题浏览）
 - 研究路线建议：见 `docs/FUTURE_VISION.md`（“先获得感 → 认知/成长挖掘 → 语义检索/RAG → 个性化模型”）
 - 管理与进展：见 `STATUS.md`（阶段性目标与完成度）
