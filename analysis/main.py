@@ -31,6 +31,7 @@ from stats import (
     save_summary_stats,
 )
 from tokenizer import MixedLanguageTokenizer
+from viz import (
     create_zipf_panels, create_heaps_plot, create_wordcloud,
     create_yearly_comparison_chart, create_growth_chart, COLOR_SCHEMES
 )

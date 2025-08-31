@@ -203,8 +203,8 @@ def _write_executive_summary(f, report_data: Dict[str, Any]) -> None:
     # Key highlights
     f.write("### 📊 Key Highlights\n\n")
     f.write(f"- **Corpus Size**: {corpus_stats.get('total_articles', 0):,} articles across {len(corpus_stats.get('years', []))} years\n")
-    f.write(f"- **Vocabulary Richness**: {lexical_metrics.get('total_unique_tokens', 0):,} unique terms\n")
-    f.write(f"- **Lexical Diversity (TTR)**: {lexical_metrics.get('type_token_ratio', 0):.3f}\n")
+    f.write(f"- **Vocabulary Richness**: {lexical_metrics.get('unique_tokens', 0):,} unique terms\n")
+    f.write(f"- **Lexical Diversity (TTR)**: {lexical_metrics.get('ttr', 0):.3f}\n")
 
     # N-gram insights
     # Filter numeric values only (ignore dict values like 'ngram_stats_detailed')
@@ -258,9 +258,9 @@ def _write_global_overview(f, report_data: Dict[str, Any]) -> None:
     f.write("| Metric | Value |\n")
     f.write("|--------|-------|\n")
     f.write(f"| Total Articles | {corpus_stats.get('total_articles', 0):,} |\n")
-    f.write(f"| Unique Terms | {lexical_metrics.get('total_unique_tokens', 0):,} |\n")
+    f.write(f"| Unique Terms | {lexical_metrics.get('unique_tokens', 0):,} |\n")
     f.write(f"| Total Tokens | {lexical_metrics.get('total_tokens', 0):,} |\n")
-    f.write(f"| Type-Token Ratio | {lexical_metrics.get('type_token_ratio', 0):.4f} |\n")
+    f.write(f"| Type-Token Ratio | {lexical_metrics.get('ttr', 0):.4f} |\n")
     avg_tokens_per_doc = (
         lexical_metrics.get('total_tokens', 0) / corpus_stats.get('total_articles', 1)
         if corpus_stats.get('total_articles', 0) > 0 else 0
