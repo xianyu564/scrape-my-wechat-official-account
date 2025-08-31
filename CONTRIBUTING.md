@@ -90,7 +90,7 @@ cp env.json.EXAMPLE env.json
 python -m pytest
 
 # 运行特定测试
-python -m pytest tests/test_specific.py
+python -m pytest analysis/tests/test_specific.py
 ```
 
 ## 代码审查
