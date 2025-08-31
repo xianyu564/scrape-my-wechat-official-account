@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 # Add analysis pipeline to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "analysis" / "pipeline"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "analysis" / "pipeline"))
 
 from ngrams import (
     build_ngrams, 

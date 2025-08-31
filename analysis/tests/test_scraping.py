@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 # Add project root to path to import modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 class TestConfigLoading:
@@ -19,7 +19,7 @@ class TestConfigLoading:
     def test_env_config_structure(self):
         """Test that env.json can be loaded and has expected structure."""
         # Test the example file structure
-        env_example = Path(__file__).parent.parent / "env.json.EXAMPLE"
+        env_example = Path(__file__).parent.parent.parent / "env.json.EXAMPLE"
         if env_example.exists():
             with open(env_example, encoding="utf-8") as f:
                 content = f.read()
@@ -220,7 +220,7 @@ class TestImports:
 
     def test_script_module_structure(self):
         """Test that script module exists and has expected structure."""
-        script_dir = Path(__file__).parent.parent / "script"
+        script_dir = Path(__file__).parent.parent.parent / "script"
         assert script_dir.exists()
 
         main_script = script_dir / "wx_publish_backup.py"
