@@ -46,15 +46,15 @@ jobs:
     
     - name: Lint with ruff (allow failures for legacy code)
       run: |
-        # Check for serious errors in script/ and tests/
-        ruff check script/ tests/ --output-format=github || echo "Some linting issues found - see output above"
+        # Check for serious errors in script/ and analysis/tests/
+        ruff check script/ analysis/tests/ --output-format=github || echo "Some linting issues found - see output above"
         # Also check analysis/ but don't fail if there are issues with legacy code
         ruff check analysis/ --output-format=github || echo "Legacy analysis code has linting issues - will be addressed in future refactoring"
     
     - name: Format check with ruff (allow failures for legacy code)
       run: |
-        # Check code formatting for script/ and tests/
-        ruff format --check script/ tests/ || echo "Formatting issues found in main code"
+        # Check code formatting for script/ and analysis/tests/
+        ruff format --check script/ analysis/tests/ || echo "Formatting issues found in main code"
         # Also check analysis/ but don't fail
         ruff format --check analysis/ || echo "Legacy analysis code has formatting issues"
     
@@ -67,7 +67,7 @@ jobs:
     
     - name: Test with pytest
       run: |
-        pytest tests/ --cov=script --cov=analysis --cov-report=xml --cov-report=term-missing
+        pytest analysis/tests/ --cov=script --cov=analysis --cov-report=xml --cov-report=term-missing
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5

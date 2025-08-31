@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 # Add analysis directory to path for imports
-ANALYSIS_PATH = Path(__file__).parent.parent / "analysis"
+ANALYSIS_PATH = Path(__file__).parent.parent.parent / "analysis"
 sys.path.insert(0, str(ANALYSIS_PATH))
 
 from pipeline.stats import (
