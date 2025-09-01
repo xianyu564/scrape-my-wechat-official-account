@@ -292,8 +292,10 @@ def load_corpus(data_dir: Union[str, Path]) -> List[Dict[str, Optional[str]]]:
     # Define safe root directory
     safe_root = (Path(__file__).parent / "data").resolve()
     data_path = Path(data_dir).resolve()
-    # Validate that the user-supplied path is within safe_root
-    if not str(data_path).startswith(str(safe_root)):
+    # Validate that the user-supplied path is strictly contained within safe_root
+    try:
+        data_path.relative_to(safe_root)
+    except ValueError:
         raise Exception(f"数据目录超出允许范围: {data_path}")
     
     if not data_path.exists():
