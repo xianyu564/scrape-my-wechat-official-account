@@ -184,8 +184,23 @@ def load_corpus_simple(data_dir: Union[str, Path]) -> List[Dict[str, Optional[st
     """
     Load corpus from directory, supporting JSON and CSV files.
     Simplified version using only standard library.
+    Restricts loading to subdirectories under the allowed base directory, for safety.
     """
+    # Define safe base data directory (defaults to 'data' under this file's parent)
+    BASE_DATA_DIR = (Path(__file__).parent / "data").resolve()
     data_path = Path(data_dir).resolve()
+    
+    # Check that data_path is inside BASE_DATA_DIR
+    try:
+        # Python >= 3.9
+        if not data_path.is_relative_to(BASE_DATA_DIR):
+            raise Exception(f"数据目录未授权: {data_path} (必须在: {BASE_DATA_DIR})")
+    except AttributeError:
+        # Python < 3.9 compatibility
+        base_parts = BASE_DATA_DIR.parts
+        data_parts = data_path.parts
+        if len(data_parts) < len(base_parts) or base_parts != data_parts[:len(base_parts)]:
+            raise Exception(f"数据目录未授权: {data_path} (必须在: {BASE_DATA_DIR})")
     
     if not data_path.exists():
         raise FileNotFoundError(f"数据目录不存在: {data_path}")
