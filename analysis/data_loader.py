@@ -287,8 +287,14 @@ def load_corpus(data_dir: Union[str, Path]) -> List[Dict[str, Optional[str]]]:
     Raises:
         FileNotFoundError: If directory doesn't exist
         Exception: If no valid files found
+        Exception: If data_dir is outside the allowed root
     """
+    # Define safe root directory
+    safe_root = (Path(__file__).parent / "data").resolve()
     data_path = Path(data_dir).resolve()
+    # Validate that the user-supplied path is within safe_root
+    if not str(data_path).startswith(str(safe_root)):
+        raise Exception(f"数据目录超出允许范围: {data_path}")
     
     if not data_path.exists():
         raise FileNotFoundError(f"数据目录不存在: {data_path}")
