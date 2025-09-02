@@ -140,7 +140,7 @@
 
   <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
     <h3 style="margin: 0 0 15px 0; color: white;">🤖 语料再分析与AI再训练</h3>
-    <p style="margin: 0; opacity: 0.9;">支持词频/年度/主题等社会科学分析，及基于个人语料的对话模型再训练。</p>
+    <p style="margin: 0; opacity: 0.9;">支持学术级词频/年度/主题分析与词云可视化，符合WWW/SIGIR等顶会标准，及基于个人语料的对话模型再训练。</p>
   </div>
 
   <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 15px; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15);">
@@ -291,19 +291,41 @@ Wechat-Backup/<微信公众号名称>/
 
 ## 🧪 二次利用：语料再分析与 AI 再训练
 
-### 📊 语言学分析与词云生成 (已实现)
+### 📊 语言学分析与词云生成 (学术级实现)
 
-本项目现已具备**成熟的语料分析系统**，提供：
+本项目现已具备**学术会议标准的语料分析系统**，提供：
 
 - **🎨 高质量词云生成**: 覆盖2017-2025全年份，支持中文显示，备份于 [`.github/assets/wordclouds/`](.github/assets/wordclouds/)
 - **📈 科学级语言学分析**: Zipf定律、Heaps定律、TF-IDF、词汇多样性等指标
 - **🔤 智能分词与N-gram**: 支持中英混合文本，可变长度n-gram分析
 - **📋 自动化报告**: 完整的数据驱动分析报告生成
+- **🎓 学术标准**: 符合WWW/SIGIR/ICWSM等顶级会议要求的性能基准测试与质量评估
+
+#### 词云可视化示例
+
+<div align="center">
+  <img src=".github/assets/wordclouds/cloud_2024.png" alt="2024年词云" width="400" />
+  <img src=".github/assets/wordclouds/cloud_complete.png" alt="完整语料词云" width="400" />
+  <br>
+  <em>左: 2024年度词云 | 右: 完整语料词云 (2017-2025)</em>
+</div>
 
 **快速开始分析:**
 ```bash
 cd analysis/
 python main.py  # 完整分析 + 可视化
+```
+
+**学术级功能:**
+```bash
+# 性能基准测试 (符合学术会议标准)
+python analysis/benchmark_wordcloud.py
+
+# 高级可视化 (多种学术配色方案)
+python analysis/enhanced_wordcloud_viz.py
+
+# 质量评估 (自动学术标准评分)
+python analysis/evaluation_metrics.py
 ```
 
 **自定义词云生成:**
