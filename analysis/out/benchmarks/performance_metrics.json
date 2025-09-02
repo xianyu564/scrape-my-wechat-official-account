@@ -1,0 +1,19 @@
+{
+  "total_documents": 0,
+  "total_tokens": 0,
+  "processing_rate_docs_per_sec": 0.0,
+  "processing_rate_tokens_per_sec": 0.0,
+  "memory_efficiency_mb_per_1k_docs": 0,
+  "cpu_efficiency_percent_per_1k_docs": 0,
+  "tokenization_metrics": {
+    "execution_time": 0.001135176999999506,
+    "peak_memory_mb": 0.076202392578125,
+    "success_rate": 1.0
+  },
+  "visualization_metrics": {
+    "execution_time": 1.1226636056666923,
+    "peak_memory_mb": 27.937774340311687,
+    "success_rate": 1.0
+  },
+  "reproducibility_score": 1.0
+}
