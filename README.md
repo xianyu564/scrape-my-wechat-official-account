@@ -5,7 +5,7 @@
   </h1>
   
   <p style="font-size: 1.2em; color: #666; max-width: 800px; margin: 0 auto 30px;">
-    专业的微信公众号文章抓取和备份解决方案，支持图片本地化、多格式输出、断点续传等功能
+    专业的微信公众号文章抓取和备份解决方案，**深入结合个人信息学、人机交互与作者反思，**支持图片本地化、多格式输出、断点续传等功能
   </p>
   
   <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;">
@@ -385,9 +385,9 @@ python analysis/generate_wordclouds.py --years 2020,2021,2022,2023,2024
 
 ## 📊 项目状态
 
-- **版本**: 1.0.0
+- **版本**: 1.1.0
 - **状态**: 活跃维护
-- **Python版本**: 3.7+
+- **Python版本**: 3.9+
 
 ## 🔮 项目展望
 
