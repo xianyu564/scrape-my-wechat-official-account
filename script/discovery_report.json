@@ -1,0 +1,176 @@
+{
+  "statistics": {
+    "total_articles": 368,
+    "total_words": 719652,
+    "total_images": 19168,
+    "by_year": {
+      "2017": {
+        "articles": 32,
+        "words": 54509,
+        "images": 1204
+      },
+      "2018": {
+        "articles": 42,
+        "words": 86259,
+        "images": 1096
+      },
+      "2019": {
+        "articles": 63,
+        "words": 170167,
+        "images": 1943
+      },
+      "2020": {
+        "articles": 45,
+        "words": 37623,
+        "images": 6054
+      },
+      "2021": {
+        "articles": 40,
+        "words": 85301,
+        "images": 2000
+      },
+      "2022": {
+        "articles": 31,
+        "words": 54666,
+        "images": 1692
+      },
+      "2023": {
+        "articles": 39,
+        "words": 61242,
+        "images": 1068
+      },
+      "2024": {
+        "articles": 47,
+        "words": 95596,
+        "images": 2909
+      },
+      "2025": {
+        "articles": 29,
+        "words": 74289,
+        "images": 1202
+      }
+    }
+  },
+  "articles": [
+    {
+      "year": "2017",
+      "date": "2017-11-10",
+      "title": "今年双十一也没点长进吗",
+      "word_count": 736,
+      "image_count": 58,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-11-10_今年双十一也没点长进吗"
+    },
+    {
+      "year": "2017",
+      "date": "2017-09-21",
+      "title": "奶茶要不啦~奶茶",
+      "word_count": 2816,
+      "image_count": 44,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-09-21_奶茶要不啦~奶茶"
+    },
+    {
+      "year": "2017",
+      "date": "2017-10-06",
+      "title": "几件小事",
+      "word_count": 1322,
+      "image_count": 34,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-10-06_几件小事"
+    },
+    {
+      "year": "2017",
+      "date": "2017-12-25",
+      "title": "君子之交肝若醴",
+      "word_count": 1051,
+      "image_count": 16,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-12-25_君子之交肝若醴"
+    },
+    {
+      "year": "2017",
+      "date": "2017-11-16",
+      "title": "雅礼，今天我为你写下小札",
+      "word_count": 3317,
+      "image_count": 28,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-11-16_雅礼，今天我为你写下小札"
+    },
+    {
+      "year": "2017",
+      "date": "2017-10-05",
+      "title": "从狼人杀看《李尔王》",
+      "word_count": 1189,
+      "image_count": 24,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-10-05_从狼人杀看《李尔王》"
+    },
+    {
+      "year": "2017",
+      "date": "2017-08-08",
+      "title": "公号写了一周了  可是人设还没有出来",
+      "word_count": 2011,
+      "image_count": 30,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-08-08_公号写了一周了  可是人设还没有出来"
+    },
+    {
+      "year": "2017",
+      "date": "2017-08-02",
+      "title": "衔瑜攻略_2017.08.02",
+      "word_count": 2479,
+      "image_count": 34,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-08-02_衔瑜攻略_2017.08.02"
+    },
+    {
+      "year": "2017",
+      "date": "2017-09-24",
+      "title": "一周之内  而气候不齐",
+      "word_count": 2030,
+      "image_count": 26,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-09-24_一周之内  而气候不齐"
+    },
+    {
+      "year": "2017",
+      "date": "2017-11-21",
+      "title": "猜猜我今天要说什么",
+      "word_count": 829,
+      "image_count": 20,
+      "has_md": true,
+      "has_html": true,
+      "has_meta": true,
+      "has_images": true,
+      "directory": "2017/2017-11-21_猜猜我今天要说什么"
+    }
+  ]
+}
