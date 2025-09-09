@@ -91,10 +91,34 @@ saved: 2024/2024-12-18_另一篇文章/article.html
 ✅ 完成 → D:\Experiment\Elephenotype\scrape-my-wechat-official-account\script\backup_文不加点的张衔瑜
 ```
 
+## 后处理脚本
+
+`generate_clone_report.py` 脚本用于分析已备份文章的下载效率，生成详细的时间和大小报告。
+
+- **报告内容**：
+    - **每篇文章下载详情**：包含文章路径、下载结束时间、文章总大小（字节和MB），以及与上一篇文章下载完成时间的时间间隔（秒），以此衡量单篇文章的下载耗时。
+    - **年度汇总**：统计每个年度的总下载文件大小（字节和MB）和总下载耗时（秒）。
+- **输出格式**：同时生成 `克隆效率.json` 和 `克隆效率.md` 两种格式的报告。
+
+### 运行方法
+
+在项目根目录运行以下命令：
+```bash
+python scripts/generate_clone_report.py
+```
+如果你想指定不同的目标目录，可以使用 `--target_dir` 参数：
+```bash
+python scripts/generate_clone_report.py --target_dir "Wechat-Backup/你的其他文件夹"
+```
+
+---
+
 ## 输出目录结构
 
 ```
 Wechat-Backup/<微信公众号名称>/
+├── 克隆效率.json # 文章下载效率的JSON报告
+├── 克隆效率.md # 文章下载效率的Markdown报告
 ├── 2025/
 │ ├── 2025-08-26_文章标题1/
 │ │ ├── 2025-08-26_文章标题1.html # 可双击离线打开
@@ -221,5 +245,3 @@ python -m http.server 8000
 * 🤖 个人语料→专属对话模型
 * 📊 写作风格与主题演化分析
 * 🧩 知识图谱与检索增强
-
-```
