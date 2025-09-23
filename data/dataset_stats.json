@@ -1,0 +1,24 @@
+{
+  "total_articles": 317,
+  "total_samples": 3619,
+  "train_samples": 3257,
+  "val_samples": 362,
+  "train_ratio": 0.9,
+  "years": [
+    "2017",
+    "unknown",
+    "2021",
+    "2020",
+    "2022",
+    "2025",
+    "2024",
+    "2018",
+    "2023",
+    "2019"
+  ],
+  "sample_templates": [
+    "改写",
+    "续写",
+    "总结展开"
+  ]
+}
