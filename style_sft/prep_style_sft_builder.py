@@ -30,9 +30,18 @@ import random
 
 def load_config(config_path: str) -> Dict:
     """加载配置文件"""
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    return config
+    config_file = Path(config_path)
+    if not config_file.exists():
+        raise FileNotFoundError(f"配置文件不存在: {config_path}")
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        return config
+    except yaml.YAMLError as e:
+        raise ValueError(f"YAML配置文件格式错误: {e}") from None
+    except Exception as e:
+        raise Exception(f"配置文件读取失败: {e}") from None
 
 
 def clean_markdown_content(content: str) -> str:
@@ -166,6 +175,9 @@ def load_wechat_backup_data(backup_dir: Path, config: Dict) -> List[Tuple[str, D
     
     processed_count = 0
     
+    if not backup_dir.exists():
+        raise FileNotFoundError(f"备份目录不存在: {backup_dir}")
+    
     # 查找所有 markdown 文件
     md_files = list(backup_dir.rglob("*.md"))
     
@@ -189,8 +201,13 @@ def load_wechat_backup_data(backup_dir: Path, config: Dict) -> List[Tuple[str, D
             meta_info = {}
             
             if meta_file.exists():
-                with open(meta_file, 'r', encoding='utf-8') as f:
-                    meta_info = json.load(f)
+                try:
+                    with open(meta_file, 'r', encoding='utf-8') as f:
+                        meta_info = json.load(f)
+                except json.JSONDecodeError as e:
+                    if verbose:
+                        print(f"警告: meta.json 格式错误 {meta_file}: {e}")
+                    continue
             
             # 年份过滤
             year = meta_info.get('year', 'unknown')
@@ -226,10 +243,30 @@ def load_wechat_backup_data(backup_dir: Path, config: Dict) -> List[Tuple[str, D
 
 def build_sft_dataset(config: Dict):
     """构建 SFT 数据集"""
-    input_dir = Path(config['input_dir'])
+    # 解析路径配置，支持相对和绝对路径
+    script_dir = Path(__file__).parent
+    
+    # 输入目录路径解析
+    input_dir_str = config['input_dir']
+    if not Path(input_dir_str).is_absolute():
+        input_dir = script_dir / input_dir_str
+    else:
+        input_dir = Path(input_dir_str)
+    input_dir = input_dir.resolve()
+    
+    # 输出路径解析
     train_output = config['train_output']
     val_output = config['val_output']
     stats_output = config['stats_output']
+    
+    # 如果输出路径是相对路径，相对于脚本目录
+    if not Path(train_output).is_absolute():
+        train_output = script_dir / train_output
+    if not Path(val_output).is_absolute():
+        val_output = script_dir / val_output  
+    if not Path(stats_output).is_absolute():
+        stats_output = script_dir / stats_output
+    
     val_split = config.get('val_split', 0.1)
     random_seed = config.get('random_seed', 42)
     enable_dedup = config.get('enable_deduplication', True)
@@ -291,25 +328,31 @@ def build_sft_dataset(config: Dict):
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     
     # 写入训练集
-    with open(train_output, 'w', encoding='utf-8') as f:
-        for sample in train_samples:
-            # 移除 meta 信息，只保留训练需要的字段
-            training_sample = {
-                "system": sample["system"],
-                "input": sample["input"], 
-                "output": sample["output"]
-            }
-            f.write(json.dumps(training_sample, ensure_ascii=False) + '\n')
+    try:
+        with open(train_output, 'w', encoding='utf-8') as f:
+            for sample in train_samples:
+                # 移除 meta 信息，只保留训练需要的字段
+                training_sample = {
+                    "system": sample["system"],
+                    "input": sample["input"], 
+                    "output": sample["output"]
+                }
+                f.write(json.dumps(training_sample, ensure_ascii=False) + '\n')
+    except Exception as e:
+        raise Exception(f"写入训练集文件失败: {e}") from None
     
     # 写入验证集
-    with open(val_output, 'w', encoding='utf-8') as f:
-        for sample in val_samples:
-            training_sample = {
-                "system": sample["system"],
-                "input": sample["input"],
-                "output": sample["output"]
-            }
-            f.write(json.dumps(training_sample, ensure_ascii=False) + '\n')
+    try:
+        with open(val_output, 'w', encoding='utf-8') as f:
+            for sample in val_samples:
+                training_sample = {
+                    "system": sample["system"],
+                    "input": sample["input"],
+                    "output": sample["output"]
+                }
+                f.write(json.dumps(training_sample, ensure_ascii=False) + '\n')
+    except Exception as e:
+        raise Exception(f"写入验证集文件失败: {e}") from None
     
     # 生成统计信息
     years = list(set(meta["year"] for _, meta in articles))
@@ -335,8 +378,11 @@ def build_sft_dataset(config: Dict):
     if config.get('enable_summarize_template', True):
         stats["sample_templates"].append("总结展开")
     
-    with open(stats_output, 'w', encoding='utf-8') as f:
-        json.dump(stats, f, ensure_ascii=False, indent=2)
+    try:
+        with open(stats_output, 'w', encoding='utf-8') as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        raise Exception(f"写入统计文件失败: {e}") from None
     
     if verbose:
         print(f"训练集: {len(train_samples)} 样本 -> {train_output}")
@@ -356,36 +402,39 @@ def main():
     
     args = parser.parse_args()
     
-    # 加载配置
-    if not os.path.exists(args.config):
-        print(f"配置文件 {args.config} 不存在")
-        return
-    
-    config = load_config(args.config)
-    
-    # 命令行参数覆盖
-    if args.input_dir:
-        config['input_dir'] = args.input_dir
-    
-    if args.output_dir:
-        config['train_output'] = f"{args.output_dir}/sft_train.jsonl"
-        config['val_output'] = f"{args.output_dir}/sft_val.jsonl"
-        config['stats_output'] = f"{args.output_dir}/dataset_stats.json"
-    
-    # 验证必要的配置
-    required_keys = ['input_dir', 'train_output', 'val_output', 'stats_output']
-    for key in required_keys:
-        if key not in config:
-            print(f"配置文件缺少必要字段: {key}")
-            return
-    
-    # 检查输入目录
-    if not Path(config['input_dir']).exists():
-        print(f"输入目录不存在: {config['input_dir']}")
-        return
-    
-    # 构建数据集
-    build_sft_dataset(config)
+    try:
+        # 加载配置
+        config = load_config(args.config)
+        
+        # 命令行参数覆盖
+        if args.input_dir:
+            config['input_dir'] = args.input_dir
+        
+        if args.output_dir:
+            config['train_output'] = f"{args.output_dir}/sft_train.jsonl"
+            config['val_output'] = f"{args.output_dir}/sft_val.jsonl"
+            config['stats_output'] = f"{args.output_dir}/dataset_stats.json"
+        
+        # 验证必要的配置
+        required_keys = ['input_dir', 'train_output', 'val_output', 'stats_output']
+        for key in required_keys:
+            if key not in config:
+                print(f"配置文件缺少必要字段: {key}")
+                return 1
+        
+        # 构建数据集
+        build_sft_dataset(config)
+        return 0
+        
+    except FileNotFoundError as e:
+        print(f"错误: {e}")
+        return 1
+    except ValueError as e:
+        print(f"配置错误: {e}")
+        return 1
+    except Exception as e:
+        print(f"处理过程中出错: {e}")
+        return 1
 
 
 if __name__ == "__main__":

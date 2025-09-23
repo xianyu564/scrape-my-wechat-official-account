@@ -1,13 +1,13 @@
 # 配置文件 - Style SFT 数据准备
 
 # 输入配置
-input_dir: ../Wechat-Backup/              # 微信备份根目录路径
-filter_years: null                        # 过滤特定年份，如 [2023, 2024, 2025] 或 null 表示全部
+input_dir: ../Wechat-Backup              # 微信备份根目录路径（相对于脚本目录）
+filter_years: null                       # 过滤特定年份，如 [2023, 2024, 2025] 或 null 表示全部
 
 # 输出配置  
-train_output: data/sft_train.jsonl    # 训练集输出路径
-val_output: data/sft_val.jsonl        # 验证集输出路径
-stats_output: data/dataset_stats.json # 统计信息输出路径
+train_output: data/sft_train.jsonl       # 训练集输出路径（相对于脚本目录）
+val_output: data/sft_val.jsonl           # 验证集输出路径（相对于脚本目录）
+stats_output: data/dataset_stats.json    # 统计信息输出路径（相对于脚本目录）
 
 # 数据分割配置
 val_split: 0.1                           # 验证集比例（0.1 = 10%）
