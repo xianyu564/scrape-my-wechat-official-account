@@ -74,13 +74,13 @@ def split_into_chunks(text: str, min_length: int = 300, max_length: int = 800) -
             
         # 如果当前段落太长，需要进一步切分
         if len(para) > max_length:
-            # 按句号切分
-            sentences = re.split(r'[。！？]', para)
+            # 按句号、感叹号、问号切分，并保留标点
+            sentences = re.findall(r'[^。！？]*[。！？]', para)
             for sentence in sentences:
                 sentence = sentence.strip()
                 if not sentence:
                     continue
-                sentence += '。'  # 恢复句号
+                # 不需要恢复标点，已保留
                 
                 if len(current_chunk + sentence) > max_length:
                     if len(current_chunk) >= min_length:
