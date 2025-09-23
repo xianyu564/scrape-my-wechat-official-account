@@ -22,11 +22,18 @@ min_article_length: 100                  # 最小文章长度，过滤太短的�
 enable_rewrite_template: true            # 启用改写模板
 enable_continue_template: true           # 启用续写模板  
 enable_summarize_template: true          # 启用总结展开模板
+enable_qa_template: false                # 启用问答模板（实验性功能）
 
 # 去重配置
 enable_deduplication: true               # 启用基于哈希的重复检测
 similarity_threshold: 0.8                # 相似度阈值，超过此值的内容会被过滤
+enable_advanced_dedup: true              # 启用高级去重（基于文本相似度）
 
 # 调试配置
 verbose: true                            # 显示详细处理信息
 max_articles: null                       # 限制处理的文章数量，null表示处理全部
+
+# 质量控制配置
+enable_quality_filter: true              # 启用质量过滤
+min_unique_chars: 10                     # 文本块最少包含的不同字符数
+min_sentence_count: 1                    # 文本块最少包含的句子数

@@ -10,11 +10,13 @@
 
 ## 功能特性
 
-1. **遍历备份数据**: 扫描 `wechat-backup/**/` 下的 markdown 文件和 meta.json
-2. **智能文本处理**: 从 markdown 中提取正文段落，过滤标题、短句和图片占位符
-3. **智能切块**: 将正文按 300–800 token 切分成合适的训练块
-4. **多样化模板**: 生成改写、续写等多种训练样本类型
-5. **标准输出**: 输出符合 SFT 训练格式的 JSONL 文件
+1. **智能数据处理**: 遍历 `wechat-backup/**/` 下的 markdown 文件和 meta.json
+2. **高质量文本提取**: 从 markdown 中提取正文段落，过滤标题、短句和图片占位符
+3. **智能文本切块**: 将正文按 300–800 token 切分，保持语义完整性
+4. **多样化训练模板**: 支持改写、续写、总结展开等多种模板类型
+5. **高级去重机制**: 支持哈希去重和语义相似度去重
+6. **质量过滤**: 自动过滤低质量文本块
+7. **灵活配置**: 支持多种参数调整和模板开关
 
 ## 运行说明
 
@@ -38,13 +40,28 @@ python prep_style_sft_builder.py --input_dir ../Wechat-Backup --output_dir data
 {
   "system": "你是该公众号作者，保持其叙述节奏与转折。",
   "input": "用我的口吻改写下面这段材料：...",
-  "output": "原文内容...",
-  "meta": {
-    "year": "2023",
-    "topic": "日常随想"
-  }
+  "output": "原文内容..."
 }
 ```
+
+## 配置选项
+
+### 基础配置
+- `input_dir`: 输入目录路径
+- `filter_years`: 年份过滤
+- `min_chunk_length/max_chunk_length`: 文本块大小控制
+
+### 模板配置
+- `enable_rewrite_template`: 启用改写模板
+- `enable_continue_template`: 启用续写模板
+- `enable_summarize_template`: 启用总结展开模板
+- `enable_qa_template`: 启用问答模板（实验性）
+
+### 质量控制
+- `enable_deduplication`: 基础去重
+- `enable_advanced_dedup`: 高级语义去重
+- `enable_quality_filter`: 质量过滤
+- `similarity_threshold`: 相似度阈值
 
 ## 依赖要求
 

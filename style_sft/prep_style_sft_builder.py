@@ -62,7 +62,7 @@ def clean_markdown_content(content: str) -> str:
 
 
 def split_into_chunks(text: str, min_length: int = 300, max_length: int = 800) -> List[str]:
-    """将文本切分为适当大小的块"""
+    """将文本切分为适当大小的块，改进版本"""
     chunks = []
     paragraphs = text.split('\n\n')
     current_chunk = ""
@@ -76,11 +76,18 @@ def split_into_chunks(text: str, min_length: int = 300, max_length: int = 800) -
         if len(para) > max_length:
             # 按句号、感叹号、问号切分，并保留标点
             sentences = re.findall(r'[^。！？]*[。！？]', para)
+            # 处理最后可能没有标点的句子
+            if sentences:
+                last_end = len(''.join(sentences))
+                if last_end < len(para):
+                    sentences.append(para[last_end:])
+            else:
+                sentences = [para]
+            
             for sentence in sentences:
                 sentence = sentence.strip()
                 if not sentence:
                     continue
-                # 不需要恢复标点，已保留
                 
                 if len(current_chunk + sentence) > max_length:
                     if len(current_chunk) >= min_length:
@@ -103,7 +110,37 @@ def split_into_chunks(text: str, min_length: int = 300, max_length: int = 800) -
     if current_chunk and len(current_chunk) >= min_length:
         chunks.append(current_chunk.strip())
     
-    return [chunk for chunk in chunks if len(chunk) >= min_length]
+    # 进一步质量过滤
+    quality_chunks = []
+    for chunk in chunks:
+        if is_chunk_quality_good(chunk, min_length):
+            quality_chunks.append(chunk)
+    
+    return quality_chunks
+
+
+def is_chunk_quality_good(chunk: str, min_length: int) -> bool:
+    """检查文本块质量"""
+    # 基本长度检查
+    if len(chunk) < min_length:
+        return False
+    
+    # 检查是否包含足够的实际内容（非空白字符）
+    non_whitespace_chars = len(re.sub(r'\s', '', chunk))
+    if non_whitespace_chars < min_length * 0.7:  # 至少70%是非空白字符
+        return False
+    
+    # 检查是否主要是重复字符或符号
+    unique_chars = len(set(chunk.replace(' ', '').replace('\n', '')))
+    if unique_chars < 10:  # 至少包含10个不同字符
+        return False
+    
+    # 检查是否包含足够的句子
+    sentence_count = len(re.findall(r'[。！？]', chunk))
+    if sentence_count < 1:  # 至少包含一个完整句子
+        return False
+    
+    return True
 
 
 def generate_training_templates(chunk: str, meta_info: Dict, config: Dict) -> List[Dict]:
@@ -111,11 +148,19 @@ def generate_training_templates(chunk: str, meta_info: Dict, config: Dict) -> Li
     templates = []
     system_prompt = "你是该公众号作者，保持其叙述节奏与转折。"
     
-    # 模板A：改写指令
+    # 模板A：基础改写指令
     if config.get('enable_rewrite_template', True):
+        rewrite_prompts = [
+            f"用我的口吻改写下面这段材料：{chunk}",
+            f"请用我习惯的表达方式重新组织这段文字：{chunk}",
+            f"保持我的写作风格，重新表述以下内容：{chunk}"
+        ]
+        # 随机选择一个改写模板
+        import random
+        selected_prompt = random.choice(rewrite_prompts)
         templates.append({
             "system": system_prompt,
-            "input": f"用我的口吻改写下面这段材料：{chunk}",
+            "input": selected_prompt,
             "output": chunk,
             "meta": meta_info
         })
@@ -131,29 +176,110 @@ def generate_training_templates(chunk: str, meta_info: Dict, config: Dict) -> Li
         
         prefix = chunk[:split_point].strip()
         
-        if prefix:
+        if prefix and len(prefix) > 50:  # 确保前缀有足够内容
+            continue_prompts = [
+                f"请用我的风格续写下面的文字：{prefix}",
+                f"以我一贯的表达方式，接着写下去：{prefix}",
+                f"按照我的写作习惯，继续完成这段文字：{prefix}"
+            ]
+            selected_prompt = random.choice(continue_prompts)
             templates.append({
                 "system": system_prompt,
-                "input": f"请用我的风格续写下面的文字：{prefix}",
+                "input": selected_prompt,
                 "output": chunk,
                 "meta": meta_info
             })
     
     # 模板C：总结再展开
     if config.get('enable_summarize_template', True) and len(chunk) > 400:
+        # 提取关键信息作为提示
+        key_phrases = extract_key_phrases(chunk)
+        expand_prompts = [
+            f"用我的写作风格，围绕以下内容写一段文字：{chunk[:100]}...",
+            f"以我的表达方式，详细阐述这个话题：{key_phrases}",
+            f"用我惯用的语气和节奏，展开讨论：{chunk[:80]}..."
+        ]
+        selected_prompt = random.choice(expand_prompts)
         templates.append({
             "system": system_prompt,
-            "input": f"用我的写作风格，围绕以下内容写一段文字：{chunk[:100]}...",
+            "input": selected_prompt,
             "output": chunk,
             "meta": meta_info
         })
     
+    # 模板D：问答式训练（新增）
+    if config.get('enable_qa_template', False) and len(chunk) > 300:
+        # 基于内容生成问题
+        question = generate_question_from_text(chunk)
+        if question:
+            templates.append({
+                "system": system_prompt,
+                "input": f"请用我的方式回答这个问题：{question}",
+                "output": chunk,
+                "meta": meta_info
+            })
+    
     return templates
+
+
+def extract_key_phrases(text: str) -> str:
+    """从文本中提取关键短语"""
+    # 简单的关键词提取逻辑
+    sentences = re.findall(r'[^。！？]*[。！？]', text)
+    if sentences:
+        # 取第一句作为关键信息
+        first_sentence = sentences[0].strip()
+        return first_sentence[:50] + "..." if len(first_sentence) > 50 else first_sentence
+    return text[:50] + "..."
+
+
+def generate_question_from_text(text: str) -> Optional[str]:
+    """基于文本内容生成问题"""
+    # 检测文本类型并生成相应问题
+    if "怎么" in text or "如何" in text:
+        return "怎么看待这个现象？"
+    elif "为什么" in text:
+        return "为什么会这样？"
+    elif "感觉" in text or "觉得" in text:
+        return "对此有什么感受？"
+    elif any(word in text for word in ["旅行", "去了", "来到"]):
+        return "这次经历给你什么感受？"
+    else:
+        return "如何理解这件事？"
 
 
 def calculate_text_hash(text: str) -> str:
     """计算文本的简单哈希，用于去重"""
     return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
+def calculate_text_similarity(text1: str, text2: str) -> float:
+    """计算两个文本的相似度（简化版本）"""
+    # 移除空白字符并转换为小写
+    cleaned1 = re.sub(r'\s+', '', text1.lower())
+    cleaned2 = re.sub(r'\s+', '', text2.lower())
+    
+    # 使用字符级别的Jaccard相似度
+    set1 = set(cleaned1)
+    set2 = set(cleaned2)
+    
+    if not set1 and not set2:
+        return 1.0
+    if not set1 or not set2:
+        return 0.0
+    
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    
+    return intersection / union if union > 0 else 0.0
+
+
+def is_duplicate_content(new_text: str, existing_texts: List[str], threshold: float = 0.8) -> bool:
+    """检查文本是否与已有文本重复"""
+    for existing_text in existing_texts:
+        if calculate_text_similarity(new_text, existing_text) > threshold:
+            return True
+    return False
 
 
 def extract_topic_from_path(file_path: str) -> str:
@@ -288,6 +414,8 @@ def build_sft_dataset(config: Dict):
     # 生成训练样本
     all_samples = []
     seen_hashes = set() if enable_dedup else None
+    seen_texts = [] if config.get('enable_advanced_dedup', False) else None
+    similarity_threshold = config.get('similarity_threshold', 0.8)
     
     chunk_config = {
         'min_length': config.get('min_chunk_length', 300),
@@ -302,12 +430,21 @@ def build_sft_dataset(config: Dict):
             print(f"文章 {title} 切分为 {len(chunks)} 个块")
         
         for chunk in chunks:
-            # 去重检查
+            # 基础哈希去重检查
             if enable_dedup:
                 chunk_hash = calculate_text_hash(chunk)
                 if chunk_hash in seen_hashes:
                     continue
                 seen_hashes.add(chunk_hash)
+            
+            # 高级相似度去重检查
+            if seen_texts is not None:
+                if is_duplicate_content(chunk, seen_texts, similarity_threshold):
+                    continue
+                seen_texts.append(chunk)
+                # 限制seen_texts大小以避免内存问题
+                if len(seen_texts) > 1000:
+                    seen_texts = seen_texts[-500:]  # 保留最近的500个
             
             # 生成训练模板
             templates = generate_training_templates(chunk, meta_info, config)
@@ -377,6 +514,13 @@ def build_sft_dataset(config: Dict):
         stats["sample_templates"].append("续写")
     if config.get('enable_summarize_template', True):
         stats["sample_templates"].append("总结展开")
+    if config.get('enable_qa_template', False):
+        stats["sample_templates"].append("问答")
+    
+    # 添加更多统计信息
+    stats["deduplication_enabled"] = enable_dedup
+    stats["advanced_dedup_enabled"] = config.get('enable_advanced_dedup', False)
+    stats["quality_filter_enabled"] = config.get('enable_quality_filter', True)
     
     try:
         with open(stats_output, 'w', encoding='utf-8') as f:
