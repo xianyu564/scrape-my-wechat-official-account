@@ -355,8 +355,8 @@ def build_sft_dataset(config: Dict):
         raise Exception(f"写入验证集文件失败: {e}") from None
     
     # 生成统计信息
-    years = list(set(meta["year"] for _, meta in articles))
-    topics = list(set(meta["topic"] for _, meta in articles))
+    years = list(set(meta.get("year") for _, meta in articles if meta.get("year") is not None))
+    topics = list(set(meta.get("topic") for _, meta in articles if meta.get("topic") is not None))
     
     stats = {
         "total_articles": len(articles),
