@@ -50,5 +50,5 @@ python prep_style_sft_builder.py --input_dir ../Wechat-Backup --output_dir data
 
 确保已安装必要的 Python 库：
 ```bash
-pip install pyyaml pathlib
+pip install pyyaml
 ```
