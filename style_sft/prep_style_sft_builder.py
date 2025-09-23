@@ -156,7 +156,6 @@ def generate_training_templates(chunk: str, meta_info: Dict, config: Dict) -> Li
             f"保持我的写作风格，重新表述以下内容：{chunk}"
         ]
         # 随机选择一个改写模板
-        import random
         selected_prompt = random.choice(rewrite_prompts)
         templates.append({
             "system": system_prompt,
