@@ -75,3 +75,13 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# 风格训练输出 (仅本地保存)
+outputs/
+logs/
+eval/*.png
+eval/*.jpg
+eval/*.jpeg
+eval/ab_test_samples.json
+eval/style_evaluation_report.md
+eval/style_comparison.png
+
