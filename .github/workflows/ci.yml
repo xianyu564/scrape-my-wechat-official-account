@@ -99,14 +99,14 @@ jobs:
         bandit -r script/ -f json -o bandit-report.json || true
     
     - name: Upload safety report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: safety-report
         path: safety-report.json
         if-no-files-found: ignore
     
     - name: Upload bandit report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: bandit-report
         path: bandit-report.json
