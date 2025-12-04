@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # script/wx_publish_backup.py
 
 # wx_publish_backup.py  (year-only folders; HTML named as YYYY-MM-DD_<title>.html)
