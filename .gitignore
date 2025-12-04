@@ -13,6 +13,7 @@ secrets.json
 
 # 备份文件
 archive/*
+Wechat-Backup/拉里的旧衬衫/*
 
 # Python
 __pycache__/
